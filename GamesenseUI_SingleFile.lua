@@ -1,10 +1,3 @@
-
---// FILE: init.lua
-local Library = require(script.Library)
-
-return Library.new()
-
---// FILE: Library.lua
 local Library = {}
 Library.__index = Library
 
