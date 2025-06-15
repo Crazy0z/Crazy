@@ -1,5 +1,5 @@
--- GUI Form Selection Script - CrazyHub
--- Date: 2025-06-15 20:18:51
+-- Searchable Dropdowns Script - CrazyHub
+-- Date: 2025-06-15 21:13:53
 -- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
@@ -552,7 +552,7 @@ local function canAutoJoinNow()
 end
 
 -- =====================================
--- MAIN TAB FEATURES
+-- MAIN TAB FEATURES - WITH SEARCHABLE DROPDOWNS
 -- =====================================
 local mainSections = {
     AutoFeatures = tabs.Main:Section({ Side = "Left" }),
@@ -563,25 +563,27 @@ mainSections.AutoFeatures:Header({
     Name = "Auto Features"
 })
 
--- Map Selection
+-- Map Selection (SEARCHABLE)
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Map:",
     Multi = false,
     Required = true,
     Options = AVAILABLE_MAPS,
     Default = 1,
+    Search = true,  -- Enable search functionality
     Callback = function(Value)
         selectedMap = Value
     end,
 })
 
--- Gamemode Selection
+-- Gamemode Selection (SEARCHABLE)
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Gamemode:",
     Multi = false,
     Required = true,
     Options = {"Classic", "Hard", "Infinite"},
     Default = 1,
+    Search = true,  -- Enable search functionality
     Callback = function(Value)
         selectedGamemode = Value
     end,
@@ -589,13 +591,14 @@ mainSections.AutoFeatures:Dropdown({
 
 mainSections.AutoFeatures:Divider()
 
--- SJW Forms Dropdown
+-- SJW Forms Dropdown (SEARCHABLE)
 mainSections.AutoFeatures:Dropdown({
     Name = "SJW - Forms:",
     Multi = false,
     Required = true,
     Options = {"1 - Summoner", "2 - Assassin", "3 - Commander"},
     Default = 1,
+    Search = true,  -- Enable search functionality
     Callback = function(Value)
         -- Extract form number from selection
         selectedSJWForm = Value:match("^(%d+)")
@@ -680,12 +683,14 @@ mainSections.AutoFeatures:Toggle({
     end,
 })
 
+-- Auto Speed Setting (SEARCHABLE)
 mainSections.AutoFeatures:Dropdown({
     Name = "Auto Speed Setting:",
     Multi = false,
     Required = true,
     Options = {"1x (Normal)", "1.5x", "2x"},
     Default = 2,
+    Search = true,  -- Enable search functionality
     Callback = function(Value)
         if Value == "1x (Normal)" then
             selectedAutoSpeed = 1
@@ -908,7 +913,7 @@ spawn(function()
 end)
 
 -- =====================================
--- SIMPLIFIED MACRO SYSTEM (NO FORM TRACKING)
+-- SIMPLIFIED MACRO SYSTEM - WITH SEARCHABLE DROPDOWNS
 -- =====================================
 local placedTowersList = {}
 local placementOrderCounter = 0
@@ -923,7 +928,7 @@ macroSections.MacroInfo:Header({
 })
 
 macroSections.MacroInfo:Label({
-    Text = "Date: 2025-06-15 20:18:51"
+    Text = "Date: 2025-06-15 21:13:53"
 })
 
 macroSections.MacroInfo:Label({
@@ -932,6 +937,10 @@ macroSections.MacroInfo:Label({
 
 macroSections.MacroInfo:Label({
     Text = "Note: Forms handled by GUI selection"
+})
+
+macroSections.MacroInfo:Label({
+    Text = "Searchable dropdowns enabled"
 })
 
 macroSections.MacroInfo:Label({
@@ -995,12 +1004,14 @@ for _, macro in pairs(currentMacros) do
 	table.insert(macroDisplayNames, macro.display)
 end
 
+-- Select Macro Dropdown (SEARCHABLE)
 local macrofile = macroSections.MacroControls:Dropdown({
 	Name = "Select Macro:",
 	Multi = false,
 	Required = true,
 	Options = macroDisplayNames,
 	Default = 1,
+	Search = true,  -- Enable search functionality
 	Callback = function(Value)
 		for _, macro in pairs(currentMacros) do
 			if macro.display == Value then
@@ -1375,7 +1386,7 @@ macroSections.MacroControls:Toggle({
 })
 
 -- =====================================
--- SETTINGS TAB - FIXED NATIVE TOGGLE CONTROLS
+-- SETTINGS TAB - WITH SEARCHABLE CONTROLS
 -- =====================================
 local settingSections = {
     UISettings = tabs.Settings:Section({ Side = "Left" }),
@@ -1383,7 +1394,7 @@ local settingSections = {
 }
 
 settingSections.UISettings:Header({
-    Name = "Platform & UI Controls"
+    Name = "Platform & UI Controls (Searchable)"
 })
 
 -- Current platform display
@@ -1526,63 +1537,75 @@ settingSections.UISettings:Button({
 
 -- Device Info Section
 settingSections.DeviceInfo:Header({
-    Name = "SJW Form Selection Info"
+    Name = "Searchable Features Info"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "SJW Form Features:"
+    Text = "Search Features Added:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• GUI-based form selection"
+    Text = "• Map Selection: Search enabled"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Auto-select after join/replay"
+    Text = "• Gamemode: Search enabled"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Manual selection button"
+    Text = "• SJW Forms: Search enabled"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Form tracking via dropdown"
-})
-
-settingSections.DeviceInfo:Divider()
-
-settingSections.DeviceInfo:Label({
-    Text = "Available Forms:"
+    Text = "• Speed Settings: Search enabled"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• 1 - Summoner"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• 2 - Assassin"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• 3 - Commander"
+    Text = "• Macro Selection: Search enabled"
 })
 
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "How it works:"
+    Text = "How to use search:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Clicks GUI elements directly"
+    Text = "• Click dropdown to open"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• No remote tracking needed"
+    Text = "• Type to filter options"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• More reliable than remotes"
+    Text = "• Results update in real-time"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Case-insensitive matching"
+})
+
+settingSections.DeviceInfo:Divider()
+
+settingSections.DeviceInfo:Label({
+    Text = "Benefits:"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Faster selection"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Easy to find items"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Better user experience"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Time saving"
 })
 
 -- Update UI status display using native method with error handling
@@ -1628,7 +1651,7 @@ MacLib:LoadAutoLoadConfig()
 
 -- Show welcome notification
 Window:Notify({
-    Title = "CrazyHub Loaded (GUI Forms)",
-    Description = "SJW form selection via GUI clicking - Platform dialog will appear shortly...",
+    Title = "CrazyHub Loaded (Searchable)",
+    Description = "All dropdowns now have search functionality - Platform dialog will appear shortly...",
     Lifetime = 5
 })
