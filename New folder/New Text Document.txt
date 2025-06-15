@@ -1,5 +1,5 @@
--- Scrollable Clean Forms Script - CrazyHub
--- Date: 2025-06-15 21:19:12
+-- Fixed Native Toggle Script - CrazyHub
+-- Date: 2025-06-15 21:35:55
 -- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
@@ -27,21 +27,6 @@ local platformSelected = false
 local isUIOpen = true
 local toggleButton = nil
 local toggleScreenGui = nil
-
--- SJW Form Selection Variables (UPDATED - Clean names)
-local selectedSJWForm = "1"
-local sjwFormNames = {
-    ["1"] = "Summoner",
-    ["2"] = "Assassin", 
-    ["3"] = "Commander"
-}
-
--- Form name to number mapping
-local formNameToNumber = {
-    ["Summoner"] = "1",
-    ["Assassin"] = "2",
-    ["Commander"] = "3"
-}
 
 -- Load saved UI scale
 if isfile(configPath) then
@@ -129,17 +114,19 @@ local function createToggleButton()
     return button, screenGui
 end
 
--- UI Toggle Functions using native MacLib methods
+-- UI Toggle Functions using native MacLib methods (FIXED)
 local function toggleUI()
     local success, currentState = pcall(function()
         return Window:GetState()
     end)
     
     if not success then
+        -- Fallback if GetState fails
         currentState = isUIOpen
     end
     
     if currentState then
+        -- Hide UI using native method
         local hideSuccess = pcall(function()
             Window:SetState(false)
         end)
@@ -157,6 +144,7 @@ local function toggleUI()
             })
         end
     else
+        -- Show UI using native method
         local showSuccess = pcall(function()
             Window:SetState(true)
         end)
@@ -167,6 +155,7 @@ local function toggleUI()
                 toggleButton.Text = "Hide UI"
                 toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
             end
+            -- Use pcall for Window:Notify in case UI is still loading
             pcall(function()
                 Window:Notify({
                     Title = "CrazyHub",
@@ -175,58 +164,6 @@ local function toggleUI()
                 })
             end)
         end
-    end
-end
-
--- SJW Form Selection Function
-local function selectSJWForm(formNumber)
-    local success = pcall(function()
-        local player = game:GetService("Players").LocalPlayer
-        local challengeGui = player.PlayerGui.MainGui.ChallengeCardSelection.Frame[formNumber]
-        
-        if challengeGui then
-            -- Simulate mouse click on the form selection
-            for _, v in pairs(getconnections(challengeGui.MouseButton1Click)) do
-                v:Fire()
-            end
-            
-            -- Alternative method using GuiService
-            local GuiService = game:GetService("GuiService")
-            GuiService.SelectedObject = challengeGui
-            
-            -- Fire the click event
-            challengeGui.MouseButton1Click:Fire()
-            
-            return true
-        end
-        return false
-    end)
-    
-    if success then
-        Window:Notify({
-            Title = "SJW Form Selected",
-            Description = "Selected: " .. sjwFormNames[formNumber] .. " (Form " .. formNumber .. ")",
-            Lifetime = 3
-        })
-    else
-        Window:Notify({
-            Title = "Form Selection Failed",
-            Description = "Could not select form " .. formNumber .. " - GUI may not be visible",
-            Lifetime = 3
-        })
-    end
-    
-    return success
-end
-
--- Auto SJW Form Selection
-local autoSJWFormEnabled = false
-local function autoSelectSJWForm()
-    if autoSJWFormEnabled then
-        spawn(function()
-            wait(2) -- Wait for GUI to load
-            selectSJWForm(selectedSJWForm)
-        end)
     end
 end
 
@@ -366,6 +303,12 @@ local macroHasRun = false
 
 -- Auto replay using your exact detection method
 getgenv().AutoReplay = false
+
+-- SJW Form Selection Variables
+local selectedForm = "Summoner [1]" -- Default to Summoner
+local selectedFormNumber = 1
+local autoFormEnabled = false
+local formHasBeenSelected = false
 
 -- Function to get teleporter position from Model
 local function getTeleporterPosition(teleporter)
@@ -558,8 +501,55 @@ local function canAutoJoinNow()
     return canJoin
 end
 
+-- SJW Form Selection Functions
+local function checkFormSelectionVisible()
+    local success, visible = pcall(function()
+        return player.PlayerGui.MainGui.ChallengeCardSelection.Visible
+    end)
+    
+    return success and visible or false
+end
+
+local function clickSelectedForm()
+    local success = pcall(function()
+        local formFrame = player.PlayerGui.MainGui.ChallengeCardSelection.Frame[tostring(selectedFormNumber)]
+        if formFrame then
+            -- Try to find a clickable button within the frame
+            local button = formFrame:FindFirstChildOfClass("TextButton") or formFrame:FindFirstChildOfClass("ImageButton")
+            if button then
+                -- Use multiple methods to ensure click registers
+                spawn(function()
+                    button.Activated:Fire()
+                end)
+                spawn(function()
+                    for _, connection in pairs(getconnections(button.MouseButton1Click)) do
+                        connection:Fire()
+                    end
+                end)
+                spawn(function()
+                    for _, connection in pairs(getconnections(button.Activated)) do
+                        connection:Fire()
+                    end
+                end)
+                return true
+            else
+                -- If no button found, try clicking the frame itself
+                spawn(function()
+                    for _, connection in pairs(getconnections(formFrame.InputBegan)) do
+                        connection:Fire({UserInputType = Enum.UserInputType.MouseButton1})
+                    end
+                end)
+                return true
+            end
+        end
+        return false
+    end)
+    
+    return success
+end
+
 -- =====================================
--- MAIN TAB FEATURES - WITH SCROLLABLE DROPDOWNS & CLEAN SJW FORMS
+-- MAIN TAB FEATURES
 -- =====================================
 local mainSections = {
     AutoFeatures = tabs.Main:Section({ Side = "Left" }),
@@ -570,31 +560,25 @@ mainSections.AutoFeatures:Header({
     Name = "Auto Features"
 })
 
--- Map Selection (SCROLLABLE & SEARCHABLE)
+-- Map Selection
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Map:",
     Multi = false,
     Required = true,
     Options = AVAILABLE_MAPS,
     Default = 1,
-    Search = true,
-    Scrollable = true,
-    MaxVisibleItems = 8,  -- Limit visible items to enable scrolling
     Callback = function(Value)
         selectedMap = Value
     end,
 })
 
--- Gamemode Selection (SCROLLABLE & SEARCHABLE)
+-- Gamemode Selection
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Gamemode:",
     Multi = false,
     Required = true,
     Options = {"Classic", "Hard", "Infinite"},
     Default = 1,
-    Search = true,
-    Scrollable = true,
-    MaxVisibleItems = 5,
     Callback = function(Value)
         selectedGamemode = Value
     end,
@@ -602,49 +586,52 @@ mainSections.AutoFeatures:Dropdown({
 
 mainSections.AutoFeatures:Divider()
 
--- SJW Forms Dropdown (CLEAN NAMES - NO NUMBERS)
+-- SJW Forms Selection
 mainSections.AutoFeatures:Dropdown({
-    Name = "SJW - Forms:",
+    Name = "SJW Forms:",
     Multi = false,
     Required = true,
-    Options = {"Summoner", "Assassin", "Commander"},  -- Clean names without numbers
+    Options = {"Summoner [1]", "Assassin [2]", "Commander [3]"},
     Default = 1,
-    Search = true,
-    Scrollable = true,
-    MaxVisibleItems = 5,
     Callback = function(Value)
-        -- Convert form name to number for internal use
-        selectedSJWForm = formNameToNumber[Value]
-        
-        Window:Notify({
-            Title = "SJW Form Selected",
-            Description = "Selected: " .. Value .. " (Form " .. selectedSJWForm .. ")",
-            Lifetime = 2
-        })
-    end,
-})
-
--- Auto SJW Form Selection
-mainSections.AutoFeatures:Toggle({
-    Name = "Auto Select SJW Form",
-    Default = false,
-    Callback = function(state)
-        autoSJWFormEnabled = state
-        if state then
-            Window:Notify({
-                Title = "Auto SJW Form Enabled",
-                Description = "Will auto-select " .. sjwFormNames[selectedSJWForm] .. " form",
-                Lifetime = 3
-            })
+        selectedForm = Value
+        if Value == "Summoner [1]" then
+            selectedFormNumber = 1
+        elseif Value == "Assassin [2]" then
+            selectedFormNumber = 2
+        elseif Value == "Commander [3]" then
+            selectedFormNumber = 3
         end
     end,
 })
 
--- Manual SJW Form Selection Button
-mainSections.AutoFeatures:Button({
-    Name = "Select SJW Form Now",
-    Callback = function()
-        selectSJWForm(selectedSJWForm)
+-- Auto Form Selection Toggle
+mainSections.AutoFeatures:Toggle({
+    Name = "Auto Select SJW Form",
+    Default = false,
+    Callback = function(state)
+        autoFormEnabled = state
+        if state then
+            spawn(function()
+                while autoFormEnabled do
+                    if checkIfInStory() and not formHasBeenSelected then
+                        if checkFormSelectionVisible() then
+                            wait(1) -- Small delay to ensure GUI is fully loaded
+                            local success = clickSelectedForm()
+                            if success then
+                                formHasBeenSelected = true
+                                Window:Notify({
+                                    Title = "Form Selected",
+                                    Description = "Selected " .. selectedForm .. " automatically!",
+                                    Lifetime = 3
+                                })
+                            end
+                        end
+                    end
+                    wait(1)
+                end
+            end)
+        end
     end,
 })
 
@@ -696,16 +683,12 @@ mainSections.AutoFeatures:Toggle({
     end,
 })
 
--- Auto Speed Setting (SCROLLABLE & SEARCHABLE)
 mainSections.AutoFeatures:Dropdown({
     Name = "Auto Speed Setting:",
     Multi = false,
     Required = true,
     Options = {"1x (Normal)", "1.5x", "2x"},
     Default = 2,
-    Search = true,
-    Scrollable = true,
-    MaxVisibleItems = 5,
     Callback = function(Value)
         if Value == "1x (Normal)" then
             selectedAutoSpeed = 1
@@ -740,6 +723,7 @@ mainSections.AutoFeatures:Toggle({
                         
                         if success then
                             macroHasRun = false -- Reset macro flag for new game
+                            formHasBeenSelected = false -- Reset form flag for new game
                             
                             Window:Notify({
                                 Title = "Auto Join Success",
@@ -748,12 +732,6 @@ mainSections.AutoFeatures:Toggle({
                             })
                             
                             wait(8)
-                            
-                            -- Auto select SJW form after joining
-                            if autoSJWFormEnabled then
-                                wait(3)
-                                autoSelectSJWForm()
-                            end
                             
                             if autoVoteEnabled then
                                 wait(2)
@@ -799,18 +777,13 @@ mainSections.AutoFeatures:Toggle({
                             game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerVoteReplay"):FireServer()
                             
                             macroHasRun = false -- Reset macro flag for new game
+                            formHasBeenSelected = false -- Reset form flag for new game
                             
                             Window:Notify({
                                 Title = "Round Over!",
                                 Description = "Automatically voted for replay",
                                 Lifetime = 3
                             })
-                            
-                            -- Auto select SJW form after replay
-                            if autoSJWFormEnabled then
-                                wait(3)
-                                autoSelectSJWForm()
-                            end
                             
                             wait(5)
                         end 
@@ -840,8 +813,20 @@ local SelectedGamemodeDisplay = mainSections.StoryInfo:Label({
     Text = "Selected Gamemode: " .. selectedGamemode
 })
 
-local SelectedSJWFormDisplay = mainSections.StoryInfo:Label({
-    Text = "SJW Form: " .. sjwFormNames[selectedSJWForm] .. " (Form " .. selectedSJWForm .. ")"
+local SelectedFormDisplay = mainSections.StoryInfo:Label({
+    Text = "Selected Form: " .. selectedForm
+})
+
+local FormSelectionStatus = mainSections.StoryInfo:Label({
+    Text = "Form Selection GUI: " .. (checkFormSelectionVisible() and "Visible" or "Hidden")
+})
+
+local AutoFormStatus = mainSections.StoryInfo:Label({
+    Text = "Auto Form: " .. (autoFormEnabled and "Active" or "Inactive")
+})
+
+local FormSelectedStatus = mainSections.StoryInfo:Label({
+    Text = "Form Has Been Selected: " .. (formHasBeenSelected and "Yes" or "No")
 })
 
 local LobbyStatus = mainSections.StoryInfo:Label({
@@ -872,10 +857,6 @@ local SpeedStatus = mainSections.StoryInfo:Label({
     Text = "Auto Speed: " .. (autoSpeedEnabled and selectedAutoSpeed .. "x" or "Inactive")
 })
 
-local SJWFormStatus = mainSections.StoryInfo:Label({
-    Text = "Auto SJW Form: " .. (autoSJWFormEnabled and "Active" or "Inactive")
-})
-
 local TeleporterStatus = mainSections.StoryInfo:Label({
     Text = "Available Teleporters: Scanning..."
 })
@@ -899,6 +880,7 @@ spawn(function()
         local inLobby = checkIfInLobby()
         local roundOver = checkRoundOver()
         local availableTeleporters = findAvailableTeleporters()
+        local formGUIVisible = checkFormSelectionVisible()
         
         -- Update UI state tracking with error handling
         local success, currentState = pcall(function()
@@ -911,7 +893,10 @@ spawn(function()
 		MoneyDisplay:UpdateName("Current Money: " .. getCurrentMoney())
         SelectedMapDisplay:UpdateName("Selected Map: " .. selectedMap)
         SelectedGamemodeDisplay:UpdateName("Selected Gamemode: " .. selectedGamemode)
-        SelectedSJWFormDisplay:UpdateName("SJW Form: " .. sjwFormNames[selectedSJWForm] .. " (Form " .. selectedSJWForm .. ")")
+        SelectedFormDisplay:UpdateName("Selected Form: " .. selectedForm)
+        FormSelectionStatus:UpdateName("Form Selection GUI: " .. (formGUIVisible and "Visible" or "Hidden"))
+        AutoFormStatus:UpdateName("Auto Form: " .. (autoFormEnabled and "Active" or "Inactive"))
+        FormSelectedStatus:UpdateName("Form Has Been Selected: " .. (formHasBeenSelected and "Yes" or "No"))
         LobbyStatus:UpdateName("In Lobby: " .. (inLobby and "Yes" or "No"))
         StoryStatus:UpdateName("In Story: " .. (isInStory and "Yes" or "No"))
         RoundOverStatus:UpdateName("Round Over GUI: " .. (roundOver and "Visible" or "Hidden"))
@@ -919,7 +904,6 @@ spawn(function()
         AutoReplayStatus:UpdateName("Auto Replay: " .. (getgenv().AutoReplay and "Active" or "Inactive"))
         VoteStatus:UpdateName("Auto Vote: " .. (autoVoteEnabled and "Active" or "Inactive"))
         SpeedStatus:UpdateName("Auto Speed: " .. (autoSpeedEnabled and selectedAutoSpeed .. "x" or "Inactive"))
-        SJWFormStatus:UpdateName("Auto SJW Form: " .. (autoSJWFormEnabled and "Active" or "Inactive"))
         TeleporterStatus:UpdateName("Available Teleporters: " .. #availableTeleporters)
         MacroRunStatus:UpdateName("Macro Has Run: " .. (macroHasRun and "Yes" or "No"))
         PlatformStatus:UpdateName("Platform: " .. deviceType .. " (Scale: " .. UIScale .. "x)")
@@ -928,7 +912,7 @@ spawn(function()
 end)
 
 -- =====================================
--- SIMPLIFIED MACRO SYSTEM - WITH SCROLLABLE DROPDOWNS
+-- FORM TRACKING MACRO SYSTEM
 -- =====================================
 local placedTowersList = {}
 local placementOrderCounter = 0
@@ -939,27 +923,15 @@ local macroSections = {
 }
 
 macroSections.MacroInfo:Header({
-    Name = "Simplified Macro System [CrazyHub]:"
+    Name = "Form Tracking Macro System [CrazyHub]:"
 })
 
 macroSections.MacroInfo:Label({
-    Text = "Date: 2025-06-15 21:19:12"
+    Text = "Date: 2025-06-15 21:35:55"
 })
 
 macroSections.MacroInfo:Label({
     Text = "User: Crazy0z"
-})
-
-macroSections.MacroInfo:Label({
-    Text = "Note: Forms handled by GUI selection"
-})
-
-macroSections.MacroInfo:Label({
-    Text = "Scrollable dropdowns enabled"
-})
-
-macroSections.MacroInfo:Label({
-    Text = "Clean form names (no numbers)"
 })
 
 macroSections.MacroInfo:Label({
@@ -984,6 +956,10 @@ local TowerQueue = macroSections.MacroInfo:Label({
 
 local MacroAutoStatus = macroSections.MacroInfo:Label({
 	Text = "Auto Macro: Off"
+})
+
+local FormTrackingStatus = macroSections.MacroInfo:Label({
+	Text = "Form Tracking: Active"
 })
 
 -- Update displays
@@ -1023,16 +999,12 @@ for _, macro in pairs(currentMacros) do
 	table.insert(macroDisplayNames, macro.display)
 end
 
--- Select Macro Dropdown (SCROLLABLE & SEARCHABLE)
 local macrofile = macroSections.MacroControls:Dropdown({
 	Name = "Select Macro:",
 	Multi = false,
 	Required = true,
 	Options = macroDisplayNames,
 	Default = 1,
-	Search = true,
-	Scrollable = true,
-	MaxVisibleItems = 8,  -- Enable scrolling for macro list
 	Callback = function(Value)
 		for _, macro in pairs(currentMacros) do
 			if macro.display == Value then
@@ -1150,7 +1122,7 @@ local macroSteps = {}
 local stepIndex = 0
 local originalHook = nil
 
--- SIMPLIFIED ALLOWED REMOTES (NO FORM TRACKING)
+-- ALLOWED REMOTES INCLUDING FORM UPGRADES
 local ALLOWED_REMOTES = {
 	"PlayerSetTowerTargetMode",
 	"PlayerSellTower", 
@@ -1168,9 +1140,22 @@ local function shouldRecordRemote(remoteName)
 	return false
 end
 
--- SIMPLIFIED RECORDING SYSTEM (NO FORM TRACKING)
+-- Function to identify form type from arguments
+local function identifyFormUpgrade(args)
+    if #args == 2 then
+        local towerID = args[1]
+        local formNumber = args[2]
+        
+        if typeof(formNumber) == "number" and formNumber >= 1 and formNumber <= 3 then
+            return true, formNumber
+        end
+    end
+    return false, nil
+end
+
+-- FORM TRACKING RECORDING SYSTEM
 macroSections.MacroControls:Toggle({
-	Name = "Record Macro (Simplified)",
+	Name = "Record Macro (Form Tracking)",
 	Default = false,
 	Callback = function(state)
 		if state then 
@@ -1189,7 +1174,7 @@ macroSections.MacroControls:Toggle({
 			placementOrderCounter = 0
 			placedTowersList = {}
 			
-			MacroStatus:UpdateName("Status: Recording (Forms via GUI)...")
+			MacroStatus:UpdateName("Status: Recording with Form Tracking...")
 			
 			originalHook = hookmetamethod(game, "__namecall", function(self, ...)
 				local method = getnamecallmethod()
@@ -1209,7 +1194,9 @@ macroSections.MacroControls:Toggle({
 								step = stepIndex,
 								timestamp = tick(),
 								originalTowerID = nil,
-								placementOrder = nil
+								placementOrder = nil,
+								isFormUpgrade = false,
+								formNumber = nil
 							}
 							
 							if self.Name == "PlayerPlaceTower" then
@@ -1217,7 +1204,16 @@ macroSections.MacroControls:Toggle({
 								actionData.placementOrder = placementOrderCounter
 								wait(1)
 								
-							elseif self.Name == "PlayerUpgradeTower" or self.Name == "PlayerSellTower" or self.Name == "PlayerSetTowerTargetMode" then
+							elseif self.Name == "PlayerUpgradeTower" then
+								local isForm, formNum = identifyFormUpgrade(args)
+								actionData.originalTowerID = tostring(args[1])
+								
+								if isForm then
+									actionData.isFormUpgrade = true
+									actionData.formNumber = formNum
+								end
+								
+							elseif self.Name == "PlayerSellTower" or self.Name == "PlayerSetTowerTargetMode" then
 								actionData.originalTowerID = tostring(args[1])
 							end
 							
@@ -1298,8 +1294,8 @@ macroSections.MacroControls:Input({
 	end,
 })
 
--- Function to play macro once at start (simplified)
-local function playMacroOnce(macroFile)
+-- Function to play macro once at start with form support
+local function playMacroOnceWithForms(macroFile)
     if not macroFile or not isfile(macroFile) then
         return false
     end
@@ -1367,11 +1363,11 @@ end
 -- Auto macro at start
 local autoMacroEnabled = false
 macroSections.MacroControls:Toggle({
-	Name = "Auto Play Macro at Start",
+	Name = "Auto Play Macro at Start (Forms)",
 	Default = false,
 	Callback = function(state)
 		autoMacroEnabled = state
-		MacroAutoStatus:UpdateName("Auto Macro: " .. (state and "On (Simplified)" or "Off"))
+		MacroAutoStatus:UpdateName("Auto Macro: " .. (state and "On (Forms)" or "Off"))
 		
 		if state then
 			spawn(function()
@@ -1382,15 +1378,15 @@ macroSections.MacroControls:Toggle({
 						if checkIfInStory() and not macroHasRun then
 							local replayName = getgenv().SelectedMacro
 							if replayName and isfile(replayName) then
-								MacroStatus:UpdateName("Status: Auto Playing...")
+								MacroStatus:UpdateName("Status: Auto Playing (Forms)...")
 								
-								local success = playMacroOnce(replayName)
+								local success = playMacroOnceWithForms(replayName)
 								macroHasRun = true
 								
 								if success then
 									Window:Notify({
 										Title = "Auto Macro Complete",
-										Description = "Macro played automatically!",
+										Description = "Form tracking macro played automatically!",
 										Lifetime = 3
 									})
 								end
@@ -1407,7 +1403,7 @@ macroSections.MacroControls:Toggle({
 })
 
 -- =====================================
--- SETTINGS TAB - WITH SCROLLABLE FEATURES
+-- SETTINGS TAB - FIXED NATIVE TOGGLE CONTROLS
 -- =====================================
 local settingSections = {
     UISettings = tabs.Settings:Section({ Side = "Left" }),
@@ -1415,7 +1411,7 @@ local settingSections = {
 }
 
 settingSections.UISettings:Header({
-    Name = "Platform & UI Controls (Scrollable)"
+    Name = "Platform & UI Controls (Fixed)"
 })
 
 -- Current platform display
@@ -1424,7 +1420,7 @@ local currentPlatformDisplay = settingSections.UISettings:Label({
 })
 
 local toggleButtonDisplay = settingSections.UISettings:Label({
-    Text = "UI Toggle: Native MacLib Methods"
+    Text = "UI Toggle: Fixed Native Methods"
 })
 
 local uiStatusDisplay = settingSections.UISettings:Label({
@@ -1435,9 +1431,10 @@ settingSections.UISettings:Divider()
 
 -- UI Toggle Controls using native methods with error handling
 settingSections.UISettings:Button({
-    Name = "Toggle UI Visibility",
+    Name = "Toggle UI Visibility (Fixed)",
     Callback = function()
         toggleUI()
+        -- Update display with error handling
         local success, currentState = pcall(function()
             return Window:GetState()
         end)
@@ -1448,7 +1445,7 @@ settingSections.UISettings:Button({
 })
 
 settingSections.UISettings:Button({
-    Name = "Show UI",
+    Name = "Show UI (SetState True)",
     Callback = function()
         local success = pcall(function()
             Window:SetState(true)
@@ -1461,12 +1458,20 @@ settingSections.UISettings:Button({
                 toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
             end
             uiStatusDisplay:UpdateName("UI Status: Visible")
+            
+            pcall(function()
+                Window:Notify({
+                    Title = "UI Shown",
+                    Description = "Using native SetState(true)",
+                    Lifetime = 2
+                })
+            end)
         end
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "Hide UI",
+    Name = "Hide UI (SetState False)",
     Callback = function()
         local success = pcall(function()
             Window:SetState(false)
@@ -1479,6 +1484,12 @@ settingSections.UISettings:Button({
                 toggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
             end
             uiStatusDisplay:UpdateName("UI Status: Hidden")
+            
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "CrazyHub",
+                Text = "UI Hidden - Using native SetState(false)",
+                Duration = 3
+            })
         end
     end,
 })
@@ -1521,6 +1532,41 @@ settingSections.UISettings:Slider({
     end,
 })
 
+settingSections.UISettings:Input({
+    Name = "Enter Scale (0.3-2.0):",
+    Placeholder = tostring(UIScale),
+    AcceptedCharacters = "Numbers",
+    Callback = function(input)
+        local scale = tonumber(input)
+        if scale and scale >= 0.3 and scale <= 2.0 then
+            UIScale = scale
+            Window:SetScale(scale)
+            saveUIScale(scale)
+            
+            -- Update device type based on scale
+            if scale <= 0.6 then
+                deviceType = "Mobile"
+            else
+                deviceType = "PC"
+            end
+            
+            currentPlatformDisplay:UpdateName("Current Platform: " .. deviceType .. " (" .. string.format("%.1f", scale) .. "x)")
+            
+            Window:Notify({
+                Title = "Scale Set",
+                Description = "Scale: " .. string.format("%.1f", scale) .. "x",
+                Lifetime = 2
+            })
+        else
+            Window:Notify({
+                Title = "Invalid Scale",
+                Description = "Enter value between 0.3 and 2.0",
+                Lifetime = 3
+            })
+        end
+    end,
+})
+
 -- Quick preset buttons
 settingSections.UISettings:Button({
     Name = "Quick Mobile (0.5x)",
@@ -1558,67 +1604,89 @@ settingSections.UISettings:Button({
 
 -- Device Info Section
 settingSections.DeviceInfo:Header({
-    Name = "Scrollable & Clean Features"
+    Name = "Fixed Toggle Information"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Scrollable Features:"
+    Text = "Error Fixes Applied:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Map dropdown: Max 8 visible items"
+    Text = "• Added pcall error handling"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Macro dropdown: Max 8 visible items"
+    Text = "• Fixed nil Window.Frame access"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• All dropdowns: Scroll enabled"
+    Text = "• Safe toggle button checks"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• MaxVisibleItems: Controls scrolling"
-})
-
-settingSections.DeviceInfo:Divider()
-
-settingSections.DeviceInfo:Label({
-    Text = "Clean SJW Form Names:"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Summoner (was 1 - Summoner)"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Assassin (was 2 - Assassin)"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Commander (was 3 - Commander)"
+    Text = "• Fallback state tracking"
 })
 
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "Features:"
+    Text = "Native MacLib Methods:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Search functionality"
+    Text = "• Window:SetState(true/false)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Scroll through options"
+    Text = "• Window:GetState() with pcall"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Clean form names"
+    Text = "• Error-safe operations"
+})
+
+settingSections.DeviceInfo:Divider()
+
+settingSections.DeviceInfo:Label({
+    Text = "Toggle Button Features:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Better UX experience"
+    Text = "• Located in top-left corner"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Draggable - click and move"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Error-safe button updates"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Always visible on screen"
+})
+
+settingSections.DeviceInfo:Divider()
+
+settingSections.DeviceInfo:Label({
+    Text = "SJW Form Selection:"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• GUI-based form clicking"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Auto-detects form selection GUI"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Multiple click methods for reliability"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Resets on new game start"
 })
 
 -- Update UI status display using native method with error handling
@@ -1646,7 +1714,7 @@ Window.onUnloaded(function()
 	autoVoteEnabled = false
 	autoSpeedEnabled = false
 	autoMacroEnabled = false
-	autoSJWFormEnabled = false
+	autoFormEnabled = false
 	
 	-- Clean up toggle button
 	if toggleScreenGui then
@@ -1664,7 +1732,7 @@ MacLib:LoadAutoLoadConfig()
 
 -- Show welcome notification
 Window:Notify({
-    Title = "CrazyHub Loaded (Scrollable & Clean)",
-    Description = "Scrollable dropdowns + clean SJW form names - Platform dialog will appear shortly...",
+    Title = "CrazyHub Loaded (Fixed + Forms)",
+    Description = "Added SJW Forms auto-selection! Toggle button in top-left...",
     Lifetime = 5
 })
