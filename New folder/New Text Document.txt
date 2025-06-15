@@ -1,5 +1,5 @@
 -- Fixed Native Toggle Script - CrazyHub
--- Date: 2025-06-15 21:35:55
+-- Date: 2025-06-15 21:49:58
 -- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
@@ -560,9 +560,10 @@ mainSections.AutoFeatures:Header({
     Name = "Auto Features"
 })
 
--- Map Selection
+-- Map Selection with Search
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Map:",
+    Search = true,  -- Enable search for maps
     Multi = false,
     Required = true,
     Options = AVAILABLE_MAPS,
@@ -586,9 +587,10 @@ mainSections.AutoFeatures:Dropdown({
 
 mainSections.AutoFeatures:Divider()
 
--- SJW Forms Selection
+-- SJW Forms Selection with Search
 mainSections.AutoFeatures:Dropdown({
     Name = "SJW Forms:",
+    Search = true,  -- Enable search functionality
     Multi = false,
     Required = true,
     Options = {"Summoner [1]", "Assassin [2]", "Commander [3]"},
@@ -927,7 +929,7 @@ macroSections.MacroInfo:Header({
 })
 
 macroSections.MacroInfo:Label({
-    Text = "Date: 2025-06-15 21:35:55"
+    Text = "Date: 2025-06-15 21:49:58"
 })
 
 macroSections.MacroInfo:Label({
@@ -1001,6 +1003,7 @@ end
 
 local macrofile = macroSections.MacroControls:Dropdown({
 	Name = "Select Macro:",
+	Search = true,  -- Enable search for macro selection
 	Multi = false,
 	Required = true,
 	Options = macroDisplayNames,
@@ -1689,6 +1692,28 @@ settingSections.DeviceInfo:Label({
     Text = "• Resets on new game start"
 })
 
+settingSections.DeviceInfo:Divider()
+
+settingSections.DeviceInfo:Label({
+    Text = "Search Features Added:"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Map selection with search"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• SJW Forms with search"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Macro selection with search"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Easy filtering for large lists"
+})
+
 -- Update UI status display using native method with error handling
 spawn(function()
     while wait(1) do
@@ -1732,7 +1757,7 @@ MacLib:LoadAutoLoadConfig()
 
 -- Show welcome notification
 Window:Notify({
-    Title = "CrazyHub Loaded (Fixed + Forms)",
-    Description = "Added SJW Forms auto-selection! Toggle button in top-left...",
+    Title = "CrazyHub Loaded (Search Enabled)",
+    Description = "Added search to SJW Forms, Maps, and Macros! Toggle button in top-left...",
     Lifetime = 5
 })
