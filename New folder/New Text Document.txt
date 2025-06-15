@@ -54,7 +54,7 @@ end
 local Window = MacLib:Window({
 	Title = "Ultimate Tower Defense Helper",
 	Subtitle = "CrazyHub (" .. deviceType .. " - Scale: " .. UIScale .. "x)",
-	Size = UDim2.fromOffset(868, 650),
+	Size = UDim2.fromOffset(900, 700), -- Increased window size for bigger dropdowns
 	DragStyle = 1,
 	DisabledWindowControls = {},
 	ShowUserInfo = false,
@@ -64,6 +64,8 @@ local Window = MacLib:Window({
 
 -- Set the saved scale immediately
 Window:SetScale(UIScale)
+
+-- ...existing code... (createToggleButton, toggleUI, showPlatformDialog functions)
 
 -- Create Toggle Button
 local function createToggleButton()
@@ -255,6 +257,8 @@ local tabs = {
 	Settings = tabGroups.TabGroup1:Tab({ Name = "Settings", Image = "rbxassetid://10734950309" })
 }
 
+-- ...existing code... (helper functions and game state tracking)
+
 -- Helper function to get current money
 local function getCurrentMoney()
 	local success, money = pcall(function()
@@ -347,6 +351,8 @@ local function getTeleporterPosition(teleporter)
     
     return Vector3.new(0, 0, 0)
 end
+
+-- ...existing code... (all other helper functions)
 
 -- Function to find available teleporters
 local function findAvailableTeleporters()
@@ -560,7 +566,7 @@ mainSections.AutoFeatures:Header({
     Name = "Auto Features"
 })
 
--- Map Selection with Search
+-- Map Selection with Search - BIGGER SIZE
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Map:",
     Search = true,  -- Enable search for maps
@@ -568,18 +574,21 @@ mainSections.AutoFeatures:Dropdown({
     Required = true,
     Options = AVAILABLE_MAPS,
     Default = 1,
+    Size = UDim2.fromOffset(300, 40), -- Made dropdown bigger
     Callback = function(Value)
         selectedMap = Value
     end,
 })
 
--- Gamemode Selection
+-- Gamemode Selection with Search - BIGGER SIZE
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Gamemode:",
+    Search = true,  -- Added search functionality
     Multi = false,
     Required = true,
     Options = {"Classic", "Hard", "Infinite"},
     Default = 1,
+    Size = UDim2.fromOffset(300, 40), -- Made dropdown bigger
     Callback = function(Value)
         selectedGamemode = Value
     end,
@@ -587,7 +596,7 @@ mainSections.AutoFeatures:Dropdown({
 
 mainSections.AutoFeatures:Divider()
 
--- SJW Forms Selection with Search
+-- SJW Forms Selection with Search - BIGGER SIZE
 mainSections.AutoFeatures:Dropdown({
     Name = "SJW Forms:",
     Search = true,  -- Enable search functionality
@@ -595,6 +604,7 @@ mainSections.AutoFeatures:Dropdown({
     Required = true,
     Options = {"Summoner [1]", "Assassin [2]", "Commander [3]"},
     Default = 1,
+    Size = UDim2.fromOffset(300, 40), -- Made dropdown bigger
     Callback = function(Value)
         selectedForm = Value
         if Value == "Summoner [1]" then
@@ -606,6 +616,8 @@ mainSections.AutoFeatures:Dropdown({
         end
     end,
 })
+
+-- ...existing code... (Auto Form Selection Toggle)
 
 -- Auto Form Selection Toggle
 mainSections.AutoFeatures:Toggle({
@@ -685,12 +697,15 @@ mainSections.AutoFeatures:Toggle({
     end,
 })
 
+-- Auto Speed Dropdown with Search - BIGGER SIZE
 mainSections.AutoFeatures:Dropdown({
     Name = "Auto Speed Setting:",
+    Search = true,  -- Added search functionality
     Multi = false,
     Required = true,
     Options = {"1x (Normal)", "1.5x", "2x"},
     Default = 2,
+    Size = UDim2.fromOffset(300, 40), -- Made dropdown bigger
     Callback = function(Value)
         if Value == "1x (Normal)" then
             selectedAutoSpeed = 1
@@ -701,6 +716,8 @@ mainSections.AutoFeatures:Dropdown({
         end
     end,
 })
+
+-- ...existing code... (Auto Join Story, Auto Replay Story, Story Info Section with all labels and updates)
 
 mainSections.AutoFeatures:Divider()
 
@@ -1001,6 +1018,7 @@ for _, macro in pairs(currentMacros) do
 	table.insert(macroDisplayNames, macro.display)
 end
 
+-- Macro Selection Dropdown with Search - BIGGER SIZE
 local macrofile = macroSections.MacroControls:Dropdown({
 	Name = "Select Macro:",
 	Search = true,  -- Enable search for macro selection
@@ -1008,6 +1026,7 @@ local macrofile = macroSections.MacroControls:Dropdown({
 	Required = true,
 	Options = macroDisplayNames,
 	Default = 1,
+	Size = UDim2.fromOffset(350, 40), -- Made dropdown bigger for macro names
 	Callback = function(Value)
 		for _, macro in pairs(currentMacros) do
 			if macro.display == Value then
@@ -1017,6 +1036,8 @@ local macrofile = macroSections.MacroControls:Dropdown({
 		end
 	end,
 }, "SelectMacro")
+
+-- ...existing code... (macro controls, recording system)
 
 macroSections.MacroControls:Input({
 	Name = "Enter Macro Name:",
@@ -1507,6 +1528,50 @@ settingSections.UISettings:Button({
     end,
 })
 
+-- Manual scale controls - Dropdown with Search - BIGGER SIZE
+settingSections.UISettings:Dropdown({
+    Name = "Quick Scale Presets:",
+    Search = true,  -- Added search functionality
+    Multi = false,
+    Required = false,
+    Options = {"Mobile (0.4x)", "Mobile (0.5x)", "Mobile (0.6x)", "PC (1.0x)", "PC (1.2x)", "PC (1.5x)", "PC (1.8x)", "Large (2.0x)"},
+    Size = UDim2.fromOffset(350, 40), -- Made dropdown bigger
+    Callback = function(Value)
+        local scaleMap = {
+            ["Mobile (0.4x)"] = 0.4,
+            ["Mobile (0.5x)"] = 0.5,
+            ["Mobile (0.6x)"] = 0.6,
+            ["PC (1.0x)"] = 1.0,
+            ["PC (1.2x)"] = 1.2,
+            ["PC (1.5x)"] = 1.5,
+            ["PC (1.8x)"] = 1.8,
+            ["Large (2.0x)"] = 2.0
+        }
+        
+        local scale = scaleMap[Value]
+        if scale then
+            UIScale = scale
+            Window:SetScale(scale)
+            saveUIScale(scale)
+            
+            -- Update device type based on scale
+            if scale <= 0.6 then
+                deviceType = "Mobile"
+            else
+                deviceType = "PC"
+            end
+            
+            currentPlatformDisplay:UpdateName("Current Platform: " .. deviceType .. " (" .. string.format("%.1f", scale) .. "x)")
+            
+            Window:Notify({
+                Title = "Quick Scale Set",
+                Description = "Scale: " .. string.format("%.1f", scale) .. "x",
+                Lifetime = 2
+            })
+        end
+    end,
+})
+
 -- Manual scale controls
 settingSections.UISettings:Slider({
     Name = "Manual UI Scale",
@@ -1607,111 +1672,79 @@ settingSections.UISettings:Button({
 
 -- Device Info Section
 settingSections.DeviceInfo:Header({
-    Name = "Fixed Toggle Information"
+    Name = "Enhanced Dropdown Features"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Error Fixes Applied:"
+    Text = "All Dropdowns Now Have:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Added pcall error handling"
+    Text = "• Search functionality enabled"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Fixed nil Window.Frame access"
+    Text = "• Bigger dropdown sizes"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Safe toggle button checks"
+    Text = "• Better visibility and usability"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Fallback state tracking"
-})
-
-settingSections.DeviceInfo:Divider()
-
-settingSections.DeviceInfo:Label({
-    Text = "Native MacLib Methods:"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Window:SetState(true/false)"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Window:GetState() with pcall"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Error-safe operations"
+    Text = "• Quick filtering for all options"
 })
 
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "Toggle Button Features:"
+    Text = "Updated Dropdowns:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Located in top-left corner"
+    Text = "• Map selection (300x40)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Draggable - click and move"
+    Text = "• Gamemode selection (300x40)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Error-safe button updates"
+    Text = "• SJW Forms selection (300x40)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Always visible on screen"
-})
-
-settingSections.DeviceInfo:Divider()
-
-settingSections.DeviceInfo:Label({
-    Text = "SJW Form Selection:"
+    Text = "• Auto Speed settings (300x40)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• GUI-based form clicking"
+    Text = "• Macro selection (350x40)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Auto-detects form selection GUI"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Multiple click methods for reliability"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Resets on new game start"
+    Text = "• Scale presets (350x40)"
 })
 
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "Search Features Added:"
+    Text = "Window Improvements:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Map selection with search"
+    Text = "• Increased window size to 900x700"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• SJW Forms with search"
+    Text = "• Better layout for bigger dropdowns"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Macro selection with search"
+    Text = "• More space for all elements"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Easy filtering for large lists"
+    Text = "• Enhanced visual organization"
 })
 
 -- Update UI status display using native method with error handling
@@ -1757,7 +1790,7 @@ MacLib:LoadAutoLoadConfig()
 
 -- Show welcome notification
 Window:Notify({
-    Title = "CrazyHub Loaded (Search Enabled)",
-    Description = "Added search to SJW Forms, Maps, and Macros! Toggle button in top-left...",
+    Title = "CrazyHub Enhanced (All Dropdowns + Search)",
+    Description = "All dropdowns now have search and are bigger! Window increased to 900x700.",
     Lifetime = 5
 })
