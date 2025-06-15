@@ -1,4 +1,6 @@
--- Mobile Optimized Script - CrazyHub
+-- Mobile Optimized Script with Platform Selection - CrazyHub
+-- Date: 2025-06-15 10:49:53
+-- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
 game:GetService("Players").LocalPlayer.Idled:Connect(function()
@@ -18,39 +20,84 @@ end
 -- UI Size Configuration
 local UIScale = 1 -- Default to PC size
 local deviceType = "PC" -- Default device type
+local platformSelected = false
 
--- Platform Selection Popup
-local function showPlatformSelection()
-    local popup = MacLib:Popup({
-        Title = "Platform Selection",
-        Description = "Select your device type for optimal UI sizing:",
-        Buttons = {
-            {
-                Name = "PC/Desktop",
-                Callback = function()
-                    UIScale = 1
-                    deviceType = "PC"
-                    print("[CrazyHub] Platform set to PC - UI Scale: 1.0")
-                end
-            },
-            {
-                Name = "Mobile/Tablet", 
-                Callback = function()
-                    UIScale = 0.5
-                    deviceType = "Mobile"
-                    print("[CrazyHub] Platform set to Mobile - UI Scale: 0.5")
-                end
-            }
-        }
-    })
-end
+-- Create initial window for platform selection
+local SelectionWindow = MacLib:Window({
+	Title = "Platform Selection - CrazyHub",
+	Subtitle = "Choose your device type for optimal UI sizing",
+	Size = UDim2.fromOffset(500, 300),
+	DragStyle = 1,
+	DisabledWindowControls = {},
+	ShowUserInfo = false,
+	Keybind = Enum.KeyCode.RightControl,
+	AcrylicBlur = true,
+})
 
--- Show platform selection on startup
-showPlatformSelection()
+local selectionTab = SelectionWindow:TabGroup():Tab({ Name = "Platform", Image = "rbxassetid://10734950309" })
 
--- Wait for selection before creating main window
-task.wait(1)
+local selectionSection = selectionTab:Section({ Side = "Left" })
 
+selectionSection:Header({
+    Name = "Select Your Platform"
+})
+
+selectionSection:Label({
+    Text = "Choose the platform you're using:"
+})
+
+selectionSection:Label({
+    Text = "PC/Desktop: Full size UI (1.0x scale)"
+})
+
+selectionSection:Label({
+    Text = "Mobile/Tablet: Compact UI (0.5x scale)"
+})
+
+selectionSection:Divider()
+
+selectionSection:Button({
+    Name = "PC/Desktop (Recommended for PC)",
+    Callback = function()
+        UIScale = 1.0
+        deviceType = "PC"
+        platformSelected = true
+        
+        SelectionWindow:Notify({
+            Title = "Platform Selected",
+            Description = "PC/Desktop mode - Full size UI",
+            Lifetime = 2
+        })
+        
+        task.wait(2)
+        SelectionWindow:Destroy()
+    end,
+})
+
+selectionSection:Button({
+    Name = "Mobile/Tablet (Recommended for Mobile)",
+    Callback = function()
+        UIScale = 0.5
+        deviceType = "Mobile"
+        platformSelected = true
+        
+        SelectionWindow:Notify({
+            Title = "Platform Selected", 
+            Description = "Mobile/Tablet mode - Compact UI",
+            Lifetime = 2
+        })
+        
+        task.wait(2)
+        SelectionWindow:Destroy()
+    end,
+})
+
+-- Wait for platform selection
+repeat
+    task.wait(0.1)
+until platformSelected
+
+-- Now create the main window with selected scale
 local Window = MacLib:Window({
 	Title = "Ultimate Tower Defense Helper",
 	Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
@@ -1114,80 +1161,48 @@ settingSections.UISettings:Slider({
     Default = UIScale,
     Callback = function(value)
         UIScale = value
-        -- Recreate window with new scale
-        Window:Destroy()
-        task.wait(0.5)
-        
-        Window = MacLib:Window({
-            Title = "Ultimate Tower Defense Helper",
-            Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
-            Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
-            DragStyle = 1,
-            DisabledWindowControls = {},
-            ShowUserInfo = false,
-            Keybind = Enum.KeyCode.RightControl,
-            AcrylicBlur = true,
-        })
-        
         Window:Notify({
             Title = "UI Scale Updated",
-            Description = "New scale: " .. string.format("%.1f", UIScale),
-            Lifetime = 3
+            Description = "New scale: " .. string.format("%.1f", UIScale) .. " - Restart script to apply",
+            Lifetime = 5
         })
     end,
 })
 
 -- Preset UI Size Buttons
 settingSections.UISettings:Button({
-    Name = "Mobile Size (0.5x)",
+    Name = "Apply Mobile Size (0.5x)",
     Callback = function()
         UIScale = 0.5
         deviceType = "Mobile"
-        Window:Destroy()
-        task.wait(0.5)
-        
-        Window = MacLib:Window({
-            Title = "Ultimate Tower Defense Helper",
-            Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
-            Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
-            DragStyle = 1,
-            DisabledWindowControls = {},
-            ShowUserInfo = false,
-            Keybind = Enum.KeyCode.RightControl,
-            AcrylicBlur = true,
-        })
-        
         Window:Notify({
-            Title = "Mobile Size Applied",
-            Description = "UI optimized for mobile devices",
-            Lifetime = 3
+            Title = "Mobile Size Set",
+            Description = "Restart script to apply mobile optimization",
+            Lifetime = 5
         })
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "PC Size (1.0x)",
+    Name = "Apply PC Size (1.0x)",
     Callback = function()
         UIScale = 1.0
         deviceType = "PC"
-        Window:Destroy()
-        task.wait(0.5)
-        
-        Window = MacLib:Window({
-            Title = "Ultimate Tower Defense Helper",
-            Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
-            Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
-            DragStyle = 1,
-            DisabledWindowControls = {},
-            ShowUserInfo = false,
-            Keybind = Enum.KeyCode.RightControl,
-            AcrylicBlur = true,
-        })
-        
         Window:Notify({
-            Title = "PC Size Applied",
-            Description = "UI optimized for PC/Desktop",
-            Lifetime = 3
+            Title = "PC Size Set",
+            Description = "Restart script to apply PC optimization",
+            Lifetime = 5
+        })
+    end,
+})
+
+settingSections.UISettings:Button({
+    Name = "Show Platform Selection Again",
+    Callback = function()
+        Window:Notify({
+            Title = "Platform Selection",
+            Description = "Restart the script to see platform selection popup again",
+            Lifetime = 5
         })
     end,
 })
@@ -1209,16 +1224,22 @@ settingSections.DeviceInfo:Label({
     Text = "Window Size: " .. (868 * UIScale) .. "x" .. (650 * UIScale)
 })
 
+settingSections.DeviceInfo:Divider()
+
 settingSections.DeviceInfo:Label({
-    Text = "Recommended for Mobile: 0.5x"
+    Text = "Recommended Sizes:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Recommended for PC: 1.0x"
+    Text = "• Mobile/Tablet: 0.5x"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Range: 0.3x - 1.5x"
+    Text = "• PC/Desktop: 1.0x"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Custom Range: 0.3x - 1.5x"
 })
 
 MacLib:SetFolder("Maclib")
@@ -1240,3 +1261,10 @@ end)
 
 tabs.Main:Select()
 MacLib:LoadAutoLoadConfig()
+
+-- Initial notification about platform selection
+Window:Notify({
+    Title = "Platform Selected: " .. deviceType,
+    Description = "UI Scale: " .. UIScale .. "x - Perfect for your device!",
+    Lifetime = 5
+})
