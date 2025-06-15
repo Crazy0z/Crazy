@@ -1,5 +1,5 @@
--- Button Toggle UI Script - CrazyHub
--- Date: 2025-06-15 11:23:12
+-- Native Toggle UI Script - CrazyHub
+-- Date: 2025-06-15 11:27:14
 -- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
@@ -113,11 +113,13 @@ local function createToggleButton()
     return button, screenGui
 end
 
--- UI Toggle Functions
+-- UI Toggle Functions using native MacLib methods
 local function toggleUI()
-    if isUIOpen then
-        -- Close UI
-        Window.Frame.Visible = false
+    local currentState = Window:GetState()
+    
+    if currentState then
+        -- Hide UI using native method
+        Window:SetState(false)
         isUIOpen = false
         toggleButton.Text = "Show UI"
         toggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
@@ -127,8 +129,8 @@ local function toggleUI()
             Duration = 3
         })
     else
-        -- Open UI
-        Window.Frame.Visible = true
+        -- Show UI using native method
+        Window:SetState(true)
         isUIOpen = true
         toggleButton.Text = "Hide UI"
         toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -732,6 +734,9 @@ spawn(function()
         local roundOver = checkRoundOver()
         local availableTeleporters = findAvailableTeleporters()
         
+        -- Update UI state tracking
+        isUIOpen = Window:GetState()
+        
 		MoneyDisplay:UpdateName("Current Money: " .. getCurrentMoney())
         SelectedMapDisplay:UpdateName("Selected Map: " .. selectedMap)
         SelectedGamemodeDisplay:UpdateName("Selected Gamemode: " .. selectedGamemode)
@@ -765,7 +770,7 @@ macroSections.MacroInfo:Header({
 })
 
 macroSections.MacroInfo:Label({
-    Text = "Date: 2025-06-15 11:23:12"
+    Text = "Date: 2025-06-15 11:27:14"
 })
 
 macroSections.MacroInfo:Label({
@@ -1241,7 +1246,7 @@ macroSections.MacroControls:Toggle({
 })
 
 -- =====================================
--- SETTINGS TAB - BUTTON TOGGLE CONTROLS
+-- SETTINGS TAB - NATIVE TOGGLE CONTROLS
 -- =====================================
 local settingSections = {
     UISettings = tabs.Settings:Section({ Side = "Left" }),
@@ -1249,7 +1254,7 @@ local settingSections = {
 }
 
 settingSections.UISettings:Header({
-    Name = "Platform & UI Controls"
+    Name = "Platform & UI Controls (Native MacLib)"
 })
 
 -- Current platform display
@@ -1258,41 +1263,55 @@ local currentPlatformDisplay = settingSections.UISettings:Label({
 })
 
 local toggleButtonDisplay = settingSections.UISettings:Label({
-    Text = "UI Toggle: Button in Top-Left Corner"
+    Text = "UI Toggle: Native SetState/GetState Methods"
 })
 
 local uiStatusDisplay = settingSections.UISettings:Label({
-    Text = "UI Status: " .. (isUIOpen and "Visible" or "Hidden")
+    Text = "UI Status: " .. (Window:GetState() and "Visible" or "Hidden")
 })
 
 settingSections.UISettings:Divider()
 
--- UI Toggle Controls
+-- UI Toggle Controls using native methods
 settingSections.UISettings:Button({
-    Name = "Toggle UI Visibility",
+    Name = "Toggle UI Visibility (Native)",
     Callback = function()
         toggleUI()
-        uiStatusDisplay:UpdateName("UI Status: " .. (isUIOpen and "Visible" or "Hidden"))
+        uiStatusDisplay:UpdateName("UI Status: " .. (Window:GetState() and "Visible" or "Hidden"))
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "Show UI",
+    Name = "Show UI (SetState True)",
     Callback = function()
-        if not isUIOpen then
-            toggleUI()
-            uiStatusDisplay:UpdateName("UI Status: Visible")
-        end
+        Window:SetState(true)
+        isUIOpen = true
+        toggleButton.Text = "Hide UI"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        uiStatusDisplay:UpdateName("UI Status: Visible")
+        
+        Window:Notify({
+            Title = "UI Shown",
+            Description = "Using native SetState(true)",
+            Lifetime = 2
+        })
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "Hide UI",
+    Name = "Hide UI (SetState False)",
     Callback = function()
-        if isUIOpen then
-            toggleUI()
-            uiStatusDisplay:UpdateName("UI Status: Hidden")
-        end
+        Window:SetState(false)
+        isUIOpen = false
+        toggleButton.Text = "Show UI"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        uiStatusDisplay:UpdateName("UI Status: Hidden")
+        
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "CrazyHub",
+            Text = "UI Hidden - Using native SetState(false)",
+            Duration = 3
+        })
     end,
 })
 
@@ -1406,8 +1425,26 @@ settingSections.UISettings:Button({
 
 -- Device Info Section
 settingSections.DeviceInfo:Header({
-    Name = "UI Toggle Information"
+    Name = "Native Toggle Information"
 })
+
+settingSections.DeviceInfo:Label({
+    Text = "Native MacLib Methods:"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Window:SetState(true/false)"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Window:GetState() returns boolean"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Built-in visibility control"
+})
+
+settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
     Text = "Toggle Button Features:"
@@ -1422,7 +1459,7 @@ settingSections.DeviceInfo:Label({
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Changes color when UI hidden"
+    Text = "• Uses native SetState methods"
 })
 
 settingSections.DeviceInfo:Label({
@@ -1446,24 +1483,6 @@ settingSections.DeviceInfo:Label({
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "Platform Selection:"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Shows immediately on execution"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• PC/Desktop: 1.5x scale"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Mobile/Tablet: 0.5x scale"
-})
-
-settingSections.DeviceInfo:Divider()
-
-settingSections.DeviceInfo:Label({
     Text = "Settings:"
 })
 
@@ -1472,17 +1491,19 @@ settingSections.DeviceInfo:Label({
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Button works when UI hidden"
+    Text = "• Native methods more reliable"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Manual controls available"
+    Text = "• GetState tracks visibility"
 })
 
--- Update UI status display
+-- Update UI status display using native method
 spawn(function()
     while wait(1) do
-        uiStatusDisplay:UpdateName("UI Status: " .. (isUIOpen and "Visible" or "Hidden"))
+        local currentState = Window:GetState()
+        uiStatusDisplay:UpdateName("UI Status: " .. (currentState and "Visible" or "Hidden"))
+        isUIOpen = currentState
     end
 end)
 
@@ -1514,6 +1535,6 @@ MacLib:LoadAutoLoadConfig()
 -- Show welcome notification
 Window:Notify({
     Title = "CrazyHub Loaded",
-    Description = "Click the toggle button in top-left to show/hide UI - Platform dialog will appear shortly...",
+    Description = "Native toggle button in top-left - Platform dialog will appear shortly...",
     Lifetime = 5
 })
