@@ -1,6 +1,4 @@
--- Form Tracking Macro Script - CrazyHub
--- Date: 2025-06-15 10:36:47
--- User: Crazy0z
+-- Mobile Optimized Script - CrazyHub
 
 local vu = game:GetService("VirtualUser")
 game:GetService("Players").LocalPlayer.Idled:Connect(function()
@@ -17,10 +15,46 @@ if not isfolder(macroFolderPath) then
     makefolder(macroFolderPath)
 end
 
+-- UI Size Configuration
+local UIScale = 1 -- Default to PC size
+local deviceType = "PC" -- Default device type
+
+-- Platform Selection Popup
+local function showPlatformSelection()
+    local popup = MacLib:Popup({
+        Title = "Platform Selection",
+        Description = "Select your device type for optimal UI sizing:",
+        Buttons = {
+            {
+                Name = "PC/Desktop",
+                Callback = function()
+                    UIScale = 1
+                    deviceType = "PC"
+                    print("[CrazyHub] Platform set to PC - UI Scale: 1.0")
+                end
+            },
+            {
+                Name = "Mobile/Tablet", 
+                Callback = function()
+                    UIScale = 0.5
+                    deviceType = "Mobile"
+                    print("[CrazyHub] Platform set to Mobile - UI Scale: 0.5")
+                end
+            }
+        }
+    })
+end
+
+-- Show platform selection on startup
+showPlatformSelection()
+
+-- Wait for selection before creating main window
+task.wait(1)
+
 local Window = MacLib:Window({
 	Title = "Ultimate Tower Defense Helper",
-	Subtitle = "Form Tracking Macro - CrazyHub",
-	Size = UDim2.fromOffset(868, 650),
+	Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
+	Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
 	DragStyle = 1,
 	DisabledWindowControls = {},
 	ShowUserInfo = false,
@@ -550,6 +584,10 @@ local MacroRunStatus = mainSections.StoryInfo:Label({
     Text = "Macro Has Run: " .. (macroHasRun and "Yes" or "No")
 })
 
+local PlatformStatus = mainSections.StoryInfo:Label({
+    Text = "Platform: " .. deviceType .. " (Scale: " .. UIScale .. ")"
+})
+
 -- Update displays
 spawn(function()
 	while wait(2) do
@@ -586,14 +624,6 @@ local macroSections = {
 
 macroSections.MacroInfo:Header({
 	Name = "Form Tracking Macro System [CrazyHub]:"
-})
-
-macroSections.MacroInfo:Label({
-	Text = "Date: 2025-06-15 10:36:47"
-})
-
-macroSections.MacroInfo:Label({
-	Text = "User: Crazy0z"
 })
 
 macroSections.MacroInfo:Label({
@@ -804,13 +834,10 @@ end
 
 -- Function to identify form type from arguments
 local function identifyFormUpgrade(args)
-    -- Check if this is a form upgrade
-    -- Form upgrades have 2 arguments: [towerID, formNumber]
     if #args == 2 then
         local towerID = args[1]
         local formNumber = args[2]
         
-        -- Form numbers are typically 1, 2, or 3
         if typeof(formNumber) == "number" and formNumber >= 1 and formNumber <= 3 then
             return true, formNumber
         end
@@ -864,30 +891,24 @@ macroSections.MacroControls:Toggle({
 								formNumber = nil
 							}
 							
-							-- Enhanced tracking for different action types
 							if self.Name == "PlayerPlaceTower" then
 								placementOrderCounter = placementOrderCounter + 1
 								actionData.placementOrder = placementOrderCounter
 								wait(1)
 								
 							elseif self.Name == "PlayerUpgradeTower" then
-								-- Check if this is a form upgrade
 								local isForm, formNum = identifyFormUpgrade(args)
 								actionData.originalTowerID = tostring(args[1])
 								
 								if isForm then
 									actionData.isFormUpgrade = true
 									actionData.formNumber = formNum
-									print("[CrazyHub] 🔄 Recorded Form Upgrade - Tower: " .. actionData.originalTowerID .. " to Form " .. formNum)
-								else
-									print("[CrazyHub] ⬆️ Recorded Regular Upgrade - Tower: " .. actionData.originalTowerID)
 								end
 								
 							elseif self.Name == "PlayerSellTower" or self.Name == "PlayerSetTowerTargetMode" then
 								actionData.originalTowerID = tostring(args[1])
 							end
 							
-							-- Store arguments with proper types
 							for i, arg in pairs(args) do
 								if typeof(arg) == "Vector3" then
 									table.insert(actionData.arguments, {
@@ -1012,7 +1033,6 @@ local function playMacroOnceWithForms(macroFile)
                 end
             end
 
-            -- Execute the action with exact recorded arguments (including form numbers)
             local success, err = pcall(function()
                 if remote:IsA("RemoteEvent") then
                     remote:FireServer(unpack(args))
@@ -1072,6 +1092,133 @@ macroSections.MacroControls:Toggle({
 			end)
 		end
 	end,
+})
+
+-- =====================================
+-- SETTINGS TAB - UI SIZE CONTROLS
+-- =====================================
+local settingSections = {
+    UISettings = tabs.Settings:Section({ Side = "Left" }),
+    DeviceInfo = tabs.Settings:Section({ Side = "Right" }),
+}
+
+settingSections.UISettings:Header({
+    Name = "UI Size Settings"
+})
+
+-- Manual UI Scale Slider
+settingSections.UISettings:Slider({
+    Name = "UI Scale",
+    Min = 0.3,
+    Max = 1.5,
+    Default = UIScale,
+    Callback = function(value)
+        UIScale = value
+        -- Recreate window with new scale
+        Window:Destroy()
+        task.wait(0.5)
+        
+        Window = MacLib:Window({
+            Title = "Ultimate Tower Defense Helper",
+            Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
+            Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
+            DragStyle = 1,
+            DisabledWindowControls = {},
+            ShowUserInfo = false,
+            Keybind = Enum.KeyCode.RightControl,
+            AcrylicBlur = true,
+        })
+        
+        Window:Notify({
+            Title = "UI Scale Updated",
+            Description = "New scale: " .. string.format("%.1f", UIScale),
+            Lifetime = 3
+        })
+    end,
+})
+
+-- Preset UI Size Buttons
+settingSections.UISettings:Button({
+    Name = "Mobile Size (0.5x)",
+    Callback = function()
+        UIScale = 0.5
+        deviceType = "Mobile"
+        Window:Destroy()
+        task.wait(0.5)
+        
+        Window = MacLib:Window({
+            Title = "Ultimate Tower Defense Helper",
+            Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
+            Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
+            DragStyle = 1,
+            DisabledWindowControls = {},
+            ShowUserInfo = false,
+            Keybind = Enum.KeyCode.RightControl,
+            AcrylicBlur = true,
+        })
+        
+        Window:Notify({
+            Title = "Mobile Size Applied",
+            Description = "UI optimized for mobile devices",
+            Lifetime = 3
+        })
+    end,
+})
+
+settingSections.UISettings:Button({
+    Name = "PC Size (1.0x)",
+    Callback = function()
+        UIScale = 1.0
+        deviceType = "PC"
+        Window:Destroy()
+        task.wait(0.5)
+        
+        Window = MacLib:Window({
+            Title = "Ultimate Tower Defense Helper",
+            Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
+            Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
+            DragStyle = 1,
+            DisabledWindowControls = {},
+            ShowUserInfo = false,
+            Keybind = Enum.KeyCode.RightControl,
+            AcrylicBlur = true,
+        })
+        
+        Window:Notify({
+            Title = "PC Size Applied",
+            Description = "UI optimized for PC/Desktop",
+            Lifetime = 3
+        })
+    end,
+})
+
+-- Device Info Section
+settingSections.DeviceInfo:Header({
+    Name = "Device Information"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "Current Platform: " .. deviceType
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "Current UI Scale: " .. UIScale
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "Window Size: " .. (868 * UIScale) .. "x" .. (650 * UIScale)
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "Recommended for Mobile: 0.5x"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "Recommended for PC: 1.0x"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "Range: 0.3x - 1.5x"
 })
 
 MacLib:SetFolder("Maclib")
