@@ -1,4 +1,6 @@
--- UI Size Slider Script - CrazyHub
+-- Working UI Size Script - CrazyHub
+-- Date: 2025-06-15 10:56:43
+-- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
 game:GetService("Players").LocalPlayer.Idled:Connect(function()
@@ -15,14 +17,32 @@ if not isfolder(macroFolderPath) then
     makefolder(macroFolderPath)
 end
 
--- UI Size Configuration
-local UIScale = 1 -- Default to PC size
+-- UI Size Configuration with file persistence
+local configPath = "crazyhub/ui_config.txt"
+local UIScale = 1 -- Default
+
+-- Load saved UI scale
+if isfile(configPath) then
+    local success, savedScale = pcall(function()
+        return tonumber(readfile(configPath))
+    end)
+    if success and savedScale and savedScale >= 0.3 and savedScale <= 2.0 then
+        UIScale = savedScale
+    end
+end
+
+-- Save UI scale function
+local function saveUIScale(scale)
+    pcall(function()
+        writefile(configPath, tostring(scale))
+    end)
+end
 
 local Window = MacLib:Window({
 	Title = "Ultimate Tower Defense Helper",
-	Subtitle = "CrazyHub",
+	Subtitle = "CrazyHub (Scale: " .. UIScale .. "x)",
 	Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
-	DragStyle = 1,
+	DragStyle = 2,
 	DisabledWindowControls = {},
 	ShowUserInfo = false,
 	Keybind = Enum.KeyCode.RightControl,
@@ -301,6 +321,25 @@ local function canAutoJoinNow()
     local canJoin = inLobby and #availableTeleporters > 0
     
     return canJoin
+end
+
+-- Function to restart script with new UI scale
+local function restartWithNewScale(newScale)
+    -- Save the new scale
+    saveUIScale(newScale)
+    
+    Window:Notify({
+        Title = "Restarting Script",
+        Description = "New UI scale: " .. newScale .. "x - Please wait...",
+        Lifetime = 3
+    })
+    
+    -- Close current window
+    Window:Destroy()
+    
+    -- Wait and reload script
+    task.wait(1)
+    loadstring(game:HttpGet("https://github.com/biggaboy212/Maclib/releases/latest/download/maclib.txt"))()
 end
 
 -- =====================================
@@ -1058,7 +1097,7 @@ macroSections.MacroControls:Toggle({
 })
 
 -- =====================================
--- SETTINGS TAB - UI SIZE CONTROLS
+-- SETTINGS TAB - WORKING UI SIZE CONTROLS
 -- =====================================
 local settingSections = {
     UISettings = tabs.Settings:Section({ Side = "Left" }),
@@ -1069,56 +1108,26 @@ settingSections.UISettings:Header({
     Name = "UI Size Settings"
 })
 
--- UI Scale Slider (Real-time adjustment)
-local UIScaleDisplay = settingSections.UISettings:Label({
+settingSections.UISettings:Label({
     Text = "Current UI Scale: " .. UIScale .. "x"
 })
 
-settingSections.UISettings:Slider({
-    Name = "UI Scale",
-    Min = 0.3,
-    Max = 2.0,
-    Default = UIScale,
-    Callback = function(value)
-        UIScale = value
-        UIScaleDisplay:UpdateName("Current UI Scale: " .. string.format("%.1f", UIScale) .. "x")
-        
-        -- Update window size in real-time
-        pcall(function()
-            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
-            Window.Frame.Size = newSize
-        end)
-        
-        Window:Notify({
-            Title = "UI Scale Updated",
-            Description = "New scale: " .. string.format("%.1f", UIScale) .. "x",
-            Lifetime = 2
-        })
-    end,
+settingSections.UISettings:Label({
+    Text = "Window Size: " .. math.floor(868 * UIScale) .. "x" .. math.floor(650 * UIScale)
 })
 
--- UI Scale Input (Alternative method)
+settingSections.UISettings:Divider()
+
+-- Input field for custom scale
 settingSections.UISettings:Input({
     Name = "Enter UI Scale (0.3-2.0):",
-    Placeholder = "1.0",
+    Placeholder = tostring(UIScale),
     AcceptedCharacters = "Numbers",
     Callback = function(input)
         local scale = tonumber(input)
         if scale and scale >= 0.3 and scale <= 2.0 then
-            UIScale = scale
-            UIScaleDisplay:UpdateName("Current UI Scale: " .. string.format("%.1f", UIScale) .. "x")
-            
-            -- Update window size
-            pcall(function()
-                local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
-                Window.Frame.Size = newSize
-            end)
-            
-            Window:Notify({
-                Title = "UI Scale Set",
-                Description = "Scale set to: " .. string.format("%.1f", UIScale) .. "x",
-                Lifetime = 2
-            })
+            saveUIScale(scale)
+            restartWithNewScale(scale)
         else
             Window:Notify({
                 Title = "Invalid Scale",
@@ -1133,97 +1142,34 @@ settingSections.UISettings:Divider()
 
 -- Preset Size Buttons
 settingSections.UISettings:Button({
-    Name = "Tiny (0.4x) - Very Small",
+    Name = "Mobile (0.5x) - Small Screen",
     Callback = function()
-        UIScale = 0.4
-        UIScaleDisplay:UpdateName("Current UI Scale: 0.4x")
-        
-        pcall(function()
-            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
-            Window.Frame.Size = newSize
-        end)
-        
-        Window:Notify({
-            Title = "Tiny Size Applied",
-            Description = "UI scale: 0.4x",
-            Lifetime = 2
-        })
+        saveUIScale(0.5)
+        restartWithNewScale(0.5)
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "Mobile (0.5x) - Recommended for Mobile",
+    Name = "Tablet (0.75x) - Medium Screen", 
     Callback = function()
-        UIScale = 0.5
-        UIScaleDisplay:UpdateName("Current UI Scale: 0.5x")
-        
-        pcall(function()
-            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
-            Window.Frame.Size = newSize
-        end)
-        
-        Window:Notify({
-            Title = "Mobile Size Applied",
-            Description = "UI scale: 0.5x",
-            Lifetime = 2
-        })
+        saveUIScale(0.75)
+        restartWithNewScale(0.75)
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "Tablet (0.75x) - Medium Size",
+    Name = "PC (1.0x) - Full Size",
     Callback = function()
-        UIScale = 0.75
-        UIScaleDisplay:UpdateName("Current UI Scale: 0.75x")
-        
-        pcall(function()
-            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
-            Window.Frame.Size = newSize
-        end)
-        
-        Window:Notify({
-            Title = "Tablet Size Applied",
-            Description = "UI scale: 0.75x",
-            Lifetime = 2
-        })
-    end,
-})
-
-settingSections.UISettings:Button({
-    Name = "PC (1.0x) - Recommended for PC",
-    Callback = function()
-        UIScale = 1.0
-        UIScaleDisplay:UpdateName("Current UI Scale: 1.0x")
-        
-        pcall(function()
-            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
-            Window.Frame.Size = newSize
-        end)
-        
-        Window:Notify({
-            Title = "PC Size Applied",
-            Description = "UI scale: 1.0x",
-            Lifetime = 2
-        })
+        saveUIScale(1.0)
+        restartWithNewScale(1.0)
     end,
 })
 
 settingSections.UISettings:Button({
     Name = "Large (1.25x) - Big Screen",
     Callback = function()
-        UIScale = 1.25
-        UIScaleDisplay:UpdateName("Current UI Scale: 1.25x")
-        
-        pcall(function()
-            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
-            Window.Frame.Size = newSize
-        end)
-        
-        Window:Notify({
-            Title = "Large Size Applied",
-            Description = "UI scale: 1.25x",
-            Lifetime = 2
-        })
+        saveUIScale(1.25)
+        restartWithNewScale(1.25)
     end,
 })
 
@@ -1232,12 +1178,20 @@ settingSections.DeviceInfo:Header({
     Name = "Size Information"
 })
 
-local WindowSizeDisplay = settingSections.DeviceInfo:Label({
-    Text = "Window Size: " .. (868 * UIScale) .. "x" .. (650 * UIScale)
+settingSections.DeviceInfo:Label({
+    Text = "How it works:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Original Size: 868x650"
+    Text = "• Choose size or enter custom value"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Script restarts with new size"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Size is saved automatically"
 })
 
 settingSections.DeviceInfo:Divider()
@@ -1269,15 +1223,8 @@ settingSections.DeviceInfo:Label({
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Changes apply instantly!"
+    Text = "Settings persist between sessions"
 })
-
--- Update window size display
-spawn(function()
-    while wait(1) do
-        WindowSizeDisplay:UpdateName("Window Size: " .. math.floor(868 * UIScale) .. "x" .. math.floor(650 * UIScale))
-    end
-end)
 
 MacLib:SetFolder("Maclib")
 tabs.Settings:InsertConfigSection("Left")
@@ -1298,3 +1245,10 @@ end)
 
 tabs.Main:Select()
 MacLib:LoadAutoLoadConfig()
+
+-- Show current scale in title and notification
+Window:Notify({
+    Title = "UI Scale Loaded",
+    Description = "Current scale: " .. UIScale .. "x - Change in Settings tab",
+    Lifetime = 5
+})
