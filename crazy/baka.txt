@@ -1,5 +1,5 @@
--- Working UI Size Script - CrazyHub
--- Date: 2025-06-15 10:56:43
+-- Clean Dialog Selection Script - CrazyHub
+-- Date: 2025-06-15 11:09:36
 -- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
@@ -17,9 +17,11 @@ if not isfolder(macroFolderPath) then
     makefolder(macroFolderPath)
 end
 
--- UI Size Configuration with file persistence
+-- UI Scale Configuration with file persistence
 local configPath = "crazyhub/ui_config.txt"
-local UIScale = 1 -- Default
+local UIScale = 1.5 -- Default to PC size
+local deviceType = "PC" -- Default device type
+local platformSelected = false
 
 -- Load saved UI scale
 if isfile(configPath) then
@@ -28,6 +30,12 @@ if isfile(configPath) then
     end)
     if success and savedScale and savedScale >= 0.3 and savedScale <= 2.0 then
         UIScale = savedScale
+        -- Determine device type based on scale
+        if savedScale <= 0.6 then
+            deviceType = "Mobile"
+        else
+            deviceType = "PC"
+        end
     end
 end
 
@@ -40,14 +48,69 @@ end
 
 local Window = MacLib:Window({
 	Title = "Ultimate Tower Defense Helper",
-	Subtitle = "CrazyHub (Scale: " .. UIScale .. "x)",
-	Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
-	DragStyle = 2,
+	Subtitle = "CrazyHub (" .. deviceType .. " - Scale: " .. UIScale .. "x)",
+	Size = UDim2.fromOffset(868, 650),
+	DragStyle = 1,
 	DisabledWindowControls = {},
 	ShowUserInfo = false,
 	Keybind = Enum.KeyCode.RightControl,
 	AcrylicBlur = true,
 })
+
+-- Set the saved scale immediately
+Window:SetScale(UIScale)
+
+-- Show platform selection dialog on first load or if user wants to change
+local function showPlatformDialog()
+    Window:Dialog({
+        Title = "Platform Selection - CrazyHub",
+        Description = "Choose your device type for optimal UI sizing. This will set the appropriate scale for your device.",
+        Buttons = {
+            {
+                Name = "PC/Desktop (1.5x Scale)",
+                Callback = function()
+                    UIScale = 1.5
+                    deviceType = "PC"
+                    platformSelected = true
+                    
+                    Window:SetScale(UIScale)
+                    saveUIScale(UIScale)
+                    
+                    Window:Notify({
+                        Title = "PC Mode Selected",
+                        Description = "UI scale set to 1.5x for PC/Desktop",
+                        Lifetime = 3
+                    })
+                end,
+            },
+            {
+                Name = "Mobile/Tablet (0.5x Scale)",
+                Callback = function()
+                    UIScale = 0.5
+                    deviceType = "Mobile"
+                    platformSelected = true
+                    
+                    Window:SetScale(UIScale)
+                    saveUIScale(UIScale)
+                    
+                    Window:Notify({
+                        Title = "Mobile Mode Selected", 
+                        Description = "UI scale set to 0.5x for Mobile/Tablet",
+                        Lifetime = 3
+                    })
+                end,
+            }
+        }
+    })
+end
+
+-- Show dialog if no config exists (first time user)
+if not isfile(configPath) then
+    task.wait(1) -- Wait for window to fully load
+    showPlatformDialog()
+else
+    platformSelected = true
+end
 
 local globalSettings = {
 	UIBlurToggle = Window:GlobalSetting({
@@ -323,25 +386,6 @@ local function canAutoJoinNow()
     return canJoin
 end
 
--- Function to restart script with new UI scale
-local function restartWithNewScale(newScale)
-    -- Save the new scale
-    saveUIScale(newScale)
-    
-    Window:Notify({
-        Title = "Restarting Script",
-        Description = "New UI scale: " .. newScale .. "x - Please wait...",
-        Lifetime = 3
-    })
-    
-    -- Close current window
-    Window:Destroy()
-    
-    -- Wait and reload script
-    task.wait(1)
-    loadstring(game:HttpGet("https://github.com/biggaboy212/Maclib/releases/latest/download/maclib.txt"))()
-end
-
 -- =====================================
 -- MAIN TAB FEATURES
 -- =====================================
@@ -590,6 +634,10 @@ local MacroRunStatus = mainSections.StoryInfo:Label({
     Text = "Macro Has Run: " .. (macroHasRun and "Yes" or "No")
 })
 
+local PlatformStatus = mainSections.StoryInfo:Label({
+    Text = "Platform: " .. deviceType .. " (Scale: " .. UIScale .. "x)"
+})
+
 -- Update displays
 spawn(function()
 	while wait(2) do
@@ -610,6 +658,7 @@ spawn(function()
         SpeedStatus:UpdateName("Auto Speed: " .. (autoSpeedEnabled and selectedAutoSpeed .. "x" or "Inactive"))
         TeleporterStatus:UpdateName("Available Teleporters: " .. #availableTeleporters)
         MacroRunStatus:UpdateName("Macro Has Run: " .. (macroHasRun and "Yes" or "No"))
+        PlatformStatus:UpdateName("Platform: " .. deviceType .. " (Scale: " .. UIScale .. "x)")
 	end
 end)
 
@@ -1097,7 +1146,7 @@ macroSections.MacroControls:Toggle({
 })
 
 -- =====================================
--- SETTINGS TAB - WORKING UI SIZE CONTROLS
+-- SETTINGS TAB - CLEAN DIALOG CONTROLS
 -- =====================================
 local settingSections = {
     UISettings = tabs.Settings:Section({ Side = "Left" }),
@@ -1105,125 +1154,173 @@ local settingSections = {
 }
 
 settingSections.UISettings:Header({
-    Name = "UI Size Settings"
+    Name = "Platform & UI Size Settings"
 })
 
-settingSections.UISettings:Label({
-    Text = "Current UI Scale: " .. UIScale .. "x"
-})
-
-settingSections.UISettings:Label({
-    Text = "Window Size: " .. math.floor(868 * UIScale) .. "x" .. math.floor(650 * UIScale)
+-- Current platform display
+local currentPlatformDisplay = settingSections.UISettings:Label({
+    Text = "Current Platform: " .. deviceType .. " (" .. UIScale .. "x)"
 })
 
 settingSections.UISettings:Divider()
 
--- Input field for custom scale
+-- Button to show platform selection dialog again
+settingSections.UISettings:Button({
+    Name = "Change Platform (Show Dialog)",
+    Callback = function()
+        showPlatformDialog()
+    end,
+})
+
+-- Manual scale controls
+settingSections.UISettings:Slider({
+    Name = "Manual UI Scale",
+    Min = 0.3,
+    Max = 2.0,
+    Default = UIScale,
+    Callback = function(value)
+        UIScale = value
+        Window:SetScale(value)
+        saveUIScale(value)
+        
+        -- Update device type based on scale
+        if value <= 0.6 then
+            deviceType = "Mobile"
+        else
+            deviceType = "PC"
+        end
+        
+        currentPlatformDisplay:UpdateName("Current Platform: " .. deviceType .. " (" .. string.format("%.1f", value) .. "x)")
+        
+        Window:Notify({
+            Title = "Scale Updated",
+            Description = "Scale: " .. string.format("%.1f", value) .. "x",
+            Lifetime = 2
+        })
+    end,
+})
+
 settingSections.UISettings:Input({
-    Name = "Enter UI Scale (0.3-2.0):",
+    Name = "Enter Scale (0.3-2.0):",
     Placeholder = tostring(UIScale),
     AcceptedCharacters = "Numbers",
     Callback = function(input)
         local scale = tonumber(input)
         if scale and scale >= 0.3 and scale <= 2.0 then
+            UIScale = scale
+            Window:SetScale(scale)
             saveUIScale(scale)
-            restartWithNewScale(scale)
+            
+            -- Update device type based on scale
+            if scale <= 0.6 then
+                deviceType = "Mobile"
+            else
+                deviceType = "PC"
+            end
+            
+            currentPlatformDisplay:UpdateName("Current Platform: " .. deviceType .. " (" .. string.format("%.1f", scale) .. "x)")
+            
+            Window:Notify({
+                Title = "Scale Set",
+                Description = "Scale: " .. string.format("%.1f", scale) .. "x",
+                Lifetime = 2
+            })
         else
             Window:Notify({
                 Title = "Invalid Scale",
-                Description = "Please enter a value between 0.3 and 2.0",
+                Description = "Enter value between 0.3 and 2.0",
                 Lifetime = 3
             })
         end
     end,
 })
 
-settingSections.UISettings:Divider()
-
--- Preset Size Buttons
+-- Quick preset buttons (ONLY these two remain)
 settingSections.UISettings:Button({
-    Name = "Mobile (0.5x) - Small Screen",
+    Name = "Quick Mobile (0.5x)",
     Callback = function()
+        UIScale = 0.5
+        deviceType = "Mobile"
+        Window:SetScale(0.5)
         saveUIScale(0.5)
-        restartWithNewScale(0.5)
+        currentPlatformDisplay:UpdateName("Current Platform: Mobile (0.5x)")
+        
+        Window:Notify({
+            Title = "Mobile Mode",
+            Description = "Scale: 0.5x",
+            Lifetime = 2
+        })
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "Tablet (0.75x) - Medium Screen", 
+    Name = "Quick PC (1.5x)",
     Callback = function()
-        saveUIScale(0.75)
-        restartWithNewScale(0.75)
-    end,
-})
-
-settingSections.UISettings:Button({
-    Name = "PC (1.0x) - Full Size",
-    Callback = function()
-        saveUIScale(1.0)
-        restartWithNewScale(1.0)
-    end,
-})
-
-settingSections.UISettings:Button({
-    Name = "Large (1.25x) - Big Screen",
-    Callback = function()
-        saveUIScale(1.25)
-        restartWithNewScale(1.25)
+        UIScale = 1.5
+        deviceType = "PC"
+        Window:SetScale(1.5)
+        saveUIScale(1.5)
+        currentPlatformDisplay:UpdateName("Current Platform: PC (1.5x)")
+        
+        Window:Notify({
+            Title = "PC Mode",
+            Description = "Scale: 1.5x",
+            Lifetime = 2
+        })
     end,
 })
 
 -- Device Info Section
 settingSections.DeviceInfo:Header({
-    Name = "Size Information"
+    Name = "Platform Information"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "How it works:"
+    Text = "Dialog Selection:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Choose size or enter custom value"
+    Text = "• PC/Desktop: 1.5x scale"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Script restarts with new size"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Size is saved automatically"
+    Text = "• Mobile/Tablet: 0.5x scale"
 })
 
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "Recommended Sizes:"
+    Text = "Manual Controls:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Mobile: 0.5x (434x325)"
+    Text = "• Slider: 0.3x - 2.0x range"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Tablet: 0.75x (651x488)"
+    Text = "• Input: Type exact values"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• PC: 1.0x (868x650)"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Large: 1.25x (1085x813)"
+    Text = "• Quick buttons: Mobile/PC presets"
 })
 
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "Range: 0.3x - 2.0x"
+    Text = "Settings:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Settings persist between sessions"
+    Text = "• Auto-saved to file"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Loaded on script start"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Dialog shows on first run"
 })
 
 MacLib:SetFolder("Maclib")
@@ -1246,9 +1343,9 @@ end)
 tabs.Main:Select()
 MacLib:LoadAutoLoadConfig()
 
--- Show current scale in title and notification
+-- Show welcome notification
 Window:Notify({
-    Title = "UI Scale Loaded",
-    Description = "Current scale: " .. UIScale .. "x - Change in Settings tab",
+    Title = "CrazyHub Loaded",
+    Description = "Platform: " .. deviceType .. " (Scale: " .. UIScale .. "x)",
     Lifetime = 5
 })
