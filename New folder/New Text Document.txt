@@ -1,5 +1,5 @@
--- Searchable Dropdowns Script - CrazyHub
--- Date: 2025-06-15 21:13:53
+-- Scrollable Clean Forms Script - CrazyHub
+-- Date: 2025-06-15 21:19:12
 -- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
@@ -28,12 +28,19 @@ local isUIOpen = true
 local toggleButton = nil
 local toggleScreenGui = nil
 
--- SJW Form Selection Variables
+-- SJW Form Selection Variables (UPDATED - Clean names)
 local selectedSJWForm = "1"
 local sjwFormNames = {
     ["1"] = "Summoner",
     ["2"] = "Assassin", 
     ["3"] = "Commander"
+}
+
+-- Form name to number mapping
+local formNameToNumber = {
+    ["Summoner"] = "1",
+    ["Assassin"] = "2",
+    ["Commander"] = "3"
 }
 
 -- Load saved UI scale
@@ -552,7 +559,7 @@ local function canAutoJoinNow()
 end
 
 -- =====================================
--- MAIN TAB FEATURES - WITH SEARCHABLE DROPDOWNS
+-- MAIN TAB FEATURES - WITH SCROLLABLE DROPDOWNS & CLEAN SJW FORMS
 -- =====================================
 local mainSections = {
     AutoFeatures = tabs.Main:Section({ Side = "Left" }),
@@ -563,27 +570,31 @@ mainSections.AutoFeatures:Header({
     Name = "Auto Features"
 })
 
--- Map Selection (SEARCHABLE)
+-- Map Selection (SCROLLABLE & SEARCHABLE)
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Map:",
     Multi = false,
     Required = true,
     Options = AVAILABLE_MAPS,
     Default = 1,
-    Search = true,  -- Enable search functionality
+    Search = true,
+    Scrollable = true,
+    MaxVisibleItems = 8,  -- Limit visible items to enable scrolling
     Callback = function(Value)
         selectedMap = Value
     end,
 })
 
--- Gamemode Selection (SEARCHABLE)
+-- Gamemode Selection (SCROLLABLE & SEARCHABLE)
 mainSections.AutoFeatures:Dropdown({
     Name = "Select Gamemode:",
     Multi = false,
     Required = true,
     Options = {"Classic", "Hard", "Infinite"},
     Default = 1,
-    Search = true,  -- Enable search functionality
+    Search = true,
+    Scrollable = true,
+    MaxVisibleItems = 5,
     Callback = function(Value)
         selectedGamemode = Value
     end,
@@ -591,21 +602,23 @@ mainSections.AutoFeatures:Dropdown({
 
 mainSections.AutoFeatures:Divider()
 
--- SJW Forms Dropdown (SEARCHABLE)
+-- SJW Forms Dropdown (CLEAN NAMES - NO NUMBERS)
 mainSections.AutoFeatures:Dropdown({
     Name = "SJW - Forms:",
     Multi = false,
     Required = true,
-    Options = {"1 - Summoner", "2 - Assassin", "3 - Commander"},
+    Options = {"Summoner", "Assassin", "Commander"},  -- Clean names without numbers
     Default = 1,
-    Search = true,  -- Enable search functionality
+    Search = true,
+    Scrollable = true,
+    MaxVisibleItems = 5,
     Callback = function(Value)
-        -- Extract form number from selection
-        selectedSJWForm = Value:match("^(%d+)")
+        -- Convert form name to number for internal use
+        selectedSJWForm = formNameToNumber[Value]
         
         Window:Notify({
             Title = "SJW Form Selected",
-            Description = "Form " .. selectedSJWForm .. " - " .. sjwFormNames[selectedSJWForm],
+            Description = "Selected: " .. Value .. " (Form " .. selectedSJWForm .. ")",
             Lifetime = 2
         })
     end,
@@ -683,14 +696,16 @@ mainSections.AutoFeatures:Toggle({
     end,
 })
 
--- Auto Speed Setting (SEARCHABLE)
+-- Auto Speed Setting (SCROLLABLE & SEARCHABLE)
 mainSections.AutoFeatures:Dropdown({
     Name = "Auto Speed Setting:",
     Multi = false,
     Required = true,
     Options = {"1x (Normal)", "1.5x", "2x"},
     Default = 2,
-    Search = true,  -- Enable search functionality
+    Search = true,
+    Scrollable = true,
+    MaxVisibleItems = 5,
     Callback = function(Value)
         if Value == "1x (Normal)" then
             selectedAutoSpeed = 1
@@ -826,7 +841,7 @@ local SelectedGamemodeDisplay = mainSections.StoryInfo:Label({
 })
 
 local SelectedSJWFormDisplay = mainSections.StoryInfo:Label({
-    Text = "SJW Form: " .. selectedSJWForm .. " - " .. sjwFormNames[selectedSJWForm]
+    Text = "SJW Form: " .. sjwFormNames[selectedSJWForm] .. " (Form " .. selectedSJWForm .. ")"
 })
 
 local LobbyStatus = mainSections.StoryInfo:Label({
@@ -896,7 +911,7 @@ spawn(function()
 		MoneyDisplay:UpdateName("Current Money: " .. getCurrentMoney())
         SelectedMapDisplay:UpdateName("Selected Map: " .. selectedMap)
         SelectedGamemodeDisplay:UpdateName("Selected Gamemode: " .. selectedGamemode)
-        SelectedSJWFormDisplay:UpdateName("SJW Form: " .. selectedSJWForm .. " - " .. sjwFormNames[selectedSJWForm])
+        SelectedSJWFormDisplay:UpdateName("SJW Form: " .. sjwFormNames[selectedSJWForm] .. " (Form " .. selectedSJWForm .. ")")
         LobbyStatus:UpdateName("In Lobby: " .. (inLobby and "Yes" or "No"))
         StoryStatus:UpdateName("In Story: " .. (isInStory and "Yes" or "No"))
         RoundOverStatus:UpdateName("Round Over GUI: " .. (roundOver and "Visible" or "Hidden"))
@@ -913,7 +928,7 @@ spawn(function()
 end)
 
 -- =====================================
--- SIMPLIFIED MACRO SYSTEM - WITH SEARCHABLE DROPDOWNS
+-- SIMPLIFIED MACRO SYSTEM - WITH SCROLLABLE DROPDOWNS
 -- =====================================
 local placedTowersList = {}
 local placementOrderCounter = 0
@@ -928,7 +943,7 @@ macroSections.MacroInfo:Header({
 })
 
 macroSections.MacroInfo:Label({
-    Text = "Date: 2025-06-15 21:13:53"
+    Text = "Date: 2025-06-15 21:19:12"
 })
 
 macroSections.MacroInfo:Label({
@@ -940,7 +955,11 @@ macroSections.MacroInfo:Label({
 })
 
 macroSections.MacroInfo:Label({
-    Text = "Searchable dropdowns enabled"
+    Text = "Scrollable dropdowns enabled"
+})
+
+macroSections.MacroInfo:Label({
+    Text = "Clean form names (no numbers)"
 })
 
 macroSections.MacroInfo:Label({
@@ -1004,14 +1023,16 @@ for _, macro in pairs(currentMacros) do
 	table.insert(macroDisplayNames, macro.display)
 end
 
--- Select Macro Dropdown (SEARCHABLE)
+-- Select Macro Dropdown (SCROLLABLE & SEARCHABLE)
 local macrofile = macroSections.MacroControls:Dropdown({
 	Name = "Select Macro:",
 	Multi = false,
 	Required = true,
 	Options = macroDisplayNames,
 	Default = 1,
-	Search = true,  -- Enable search functionality
+	Search = true,
+	Scrollable = true,
+	MaxVisibleItems = 8,  -- Enable scrolling for macro list
 	Callback = function(Value)
 		for _, macro in pairs(currentMacros) do
 			if macro.display == Value then
@@ -1386,7 +1407,7 @@ macroSections.MacroControls:Toggle({
 })
 
 -- =====================================
--- SETTINGS TAB - WITH SEARCHABLE CONTROLS
+-- SETTINGS TAB - WITH SCROLLABLE FEATURES
 -- =====================================
 local settingSections = {
     UISettings = tabs.Settings:Section({ Side = "Left" }),
@@ -1394,7 +1415,7 @@ local settingSections = {
 }
 
 settingSections.UISettings:Header({
-    Name = "Platform & UI Controls (Searchable)"
+    Name = "Platform & UI Controls (Scrollable)"
 })
 
 -- Current platform display
@@ -1537,75 +1558,67 @@ settingSections.UISettings:Button({
 
 -- Device Info Section
 settingSections.DeviceInfo:Header({
-    Name = "Searchable Features Info"
+    Name = "Scrollable & Clean Features"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Search Features Added:"
+    Text = "Scrollable Features:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Map Selection: Search enabled"
+    Text = "• Map dropdown: Max 8 visible items"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Gamemode: Search enabled"
+    Text = "• Macro dropdown: Max 8 visible items"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• SJW Forms: Search enabled"
+    Text = "• All dropdowns: Scroll enabled"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Speed Settings: Search enabled"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Macro Selection: Search enabled"
+    Text = "• MaxVisibleItems: Controls scrolling"
 })
 
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "How to use search:"
+    Text = "Clean SJW Form Names:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Click dropdown to open"
+    Text = "• Summoner (was 1 - Summoner)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Type to filter options"
+    Text = "• Assassin (was 2 - Assassin)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Results update in real-time"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Case-insensitive matching"
+    Text = "• Commander (was 3 - Commander)"
 })
 
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "Benefits:"
+    Text = "Features:"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Faster selection"
+    Text = "• Search functionality"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Easy to find items"
+    Text = "• Scroll through options"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Better user experience"
+    Text = "• Clean form names"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Time saving"
+    Text = "• Better UX experience"
 })
 
 -- Update UI status display using native method with error handling
@@ -1651,7 +1664,7 @@ MacLib:LoadAutoLoadConfig()
 
 -- Show welcome notification
 Window:Notify({
-    Title = "CrazyHub Loaded (Searchable)",
-    Description = "All dropdowns now have search functionality - Platform dialog will appear shortly...",
+    Title = "CrazyHub Loaded (Scrollable & Clean)",
+    Description = "Scrollable dropdowns + clean SJW form names - Platform dialog will appear shortly...",
     Lifetime = 5
 })
