@@ -1,6 +1,4 @@
--- Mobile Optimized Script with Platform Selection - CrazyHub
--- Date: 2025-06-15 10:49:53
--- User: Crazy0z
+-- UI Size Slider Script - CrazyHub
 
 local vu = game:GetService("VirtualUser")
 game:GetService("Players").LocalPlayer.Idled:Connect(function()
@@ -19,88 +17,10 @@ end
 
 -- UI Size Configuration
 local UIScale = 1 -- Default to PC size
-local deviceType = "PC" -- Default device type
-local platformSelected = false
 
--- Create initial window for platform selection
-local SelectionWindow = MacLib:Window({
-	Title = "Platform Selection - CrazyHub",
-	Subtitle = "Choose your device type for optimal UI sizing",
-	Size = UDim2.fromOffset(500, 300),
-	DragStyle = 1,
-	DisabledWindowControls = {},
-	ShowUserInfo = false,
-	Keybind = Enum.KeyCode.RightControl,
-	AcrylicBlur = true,
-})
-
-local selectionTab = SelectionWindow:TabGroup():Tab({ Name = "Platform", Image = "rbxassetid://10734950309" })
-
-local selectionSection = selectionTab:Section({ Side = "Left" })
-
-selectionSection:Header({
-    Name = "Select Your Platform"
-})
-
-selectionSection:Label({
-    Text = "Choose the platform you're using:"
-})
-
-selectionSection:Label({
-    Text = "PC/Desktop: Full size UI (1.0x scale)"
-})
-
-selectionSection:Label({
-    Text = "Mobile/Tablet: Compact UI (0.5x scale)"
-})
-
-selectionSection:Divider()
-
-selectionSection:Button({
-    Name = "PC/Desktop (Recommended for PC)",
-    Callback = function()
-        UIScale = 1.0
-        deviceType = "PC"
-        platformSelected = true
-        
-        SelectionWindow:Notify({
-            Title = "Platform Selected",
-            Description = "PC/Desktop mode - Full size UI",
-            Lifetime = 2
-        })
-        
-        task.wait(2)
-        SelectionWindow:Destroy()
-    end,
-})
-
-selectionSection:Button({
-    Name = "Mobile/Tablet (Recommended for Mobile)",
-    Callback = function()
-        UIScale = 0.5
-        deviceType = "Mobile"
-        platformSelected = true
-        
-        SelectionWindow:Notify({
-            Title = "Platform Selected", 
-            Description = "Mobile/Tablet mode - Compact UI",
-            Lifetime = 2
-        })
-        
-        task.wait(2)
-        SelectionWindow:Destroy()
-    end,
-})
-
--- Wait for platform selection
-repeat
-    task.wait(0.1)
-until platformSelected
-
--- Now create the main window with selected scale
 local Window = MacLib:Window({
 	Title = "Ultimate Tower Defense Helper",
-	Subtitle = "Mobile Optimized - CrazyHub (" .. deviceType .. ")",
+	Subtitle = "CrazyHub",
 	Size = UDim2.fromOffset(868 * UIScale, 650 * UIScale),
 	DragStyle = 1,
 	DisabledWindowControls = {},
@@ -631,10 +551,6 @@ local MacroRunStatus = mainSections.StoryInfo:Label({
     Text = "Macro Has Run: " .. (macroHasRun and "Yes" or "No")
 })
 
-local PlatformStatus = mainSections.StoryInfo:Label({
-    Text = "Platform: " .. deviceType .. " (Scale: " .. UIScale .. ")"
-})
-
 -- Update displays
 spawn(function()
 	while wait(2) do
@@ -1153,75 +1069,175 @@ settingSections.UISettings:Header({
     Name = "UI Size Settings"
 })
 
--- Manual UI Scale Slider
+-- UI Scale Slider (Real-time adjustment)
+local UIScaleDisplay = settingSections.UISettings:Label({
+    Text = "Current UI Scale: " .. UIScale .. "x"
+})
+
 settingSections.UISettings:Slider({
     Name = "UI Scale",
     Min = 0.3,
-    Max = 1.5,
+    Max = 2.0,
     Default = UIScale,
     Callback = function(value)
         UIScale = value
+        UIScaleDisplay:UpdateName("Current UI Scale: " .. string.format("%.1f", UIScale) .. "x")
+        
+        -- Update window size in real-time
+        pcall(function()
+            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
+            Window.Frame.Size = newSize
+        end)
+        
         Window:Notify({
             Title = "UI Scale Updated",
-            Description = "New scale: " .. string.format("%.1f", UIScale) .. " - Restart script to apply",
-            Lifetime = 5
+            Description = "New scale: " .. string.format("%.1f", UIScale) .. "x",
+            Lifetime = 2
         })
     end,
 })
 
--- Preset UI Size Buttons
+-- UI Scale Input (Alternative method)
+settingSections.UISettings:Input({
+    Name = "Enter UI Scale (0.3-2.0):",
+    Placeholder = "1.0",
+    AcceptedCharacters = "Numbers",
+    Callback = function(input)
+        local scale = tonumber(input)
+        if scale and scale >= 0.3 and scale <= 2.0 then
+            UIScale = scale
+            UIScaleDisplay:UpdateName("Current UI Scale: " .. string.format("%.1f", UIScale) .. "x")
+            
+            -- Update window size
+            pcall(function()
+                local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
+                Window.Frame.Size = newSize
+            end)
+            
+            Window:Notify({
+                Title = "UI Scale Set",
+                Description = "Scale set to: " .. string.format("%.1f", UIScale) .. "x",
+                Lifetime = 2
+            })
+        else
+            Window:Notify({
+                Title = "Invalid Scale",
+                Description = "Please enter a value between 0.3 and 2.0",
+                Lifetime = 3
+            })
+        end
+    end,
+})
+
+settingSections.UISettings:Divider()
+
+-- Preset Size Buttons
 settingSections.UISettings:Button({
-    Name = "Apply Mobile Size (0.5x)",
+    Name = "Tiny (0.4x) - Very Small",
+    Callback = function()
+        UIScale = 0.4
+        UIScaleDisplay:UpdateName("Current UI Scale: 0.4x")
+        
+        pcall(function()
+            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
+            Window.Frame.Size = newSize
+        end)
+        
+        Window:Notify({
+            Title = "Tiny Size Applied",
+            Description = "UI scale: 0.4x",
+            Lifetime = 2
+        })
+    end,
+})
+
+settingSections.UISettings:Button({
+    Name = "Mobile (0.5x) - Recommended for Mobile",
     Callback = function()
         UIScale = 0.5
-        deviceType = "Mobile"
+        UIScaleDisplay:UpdateName("Current UI Scale: 0.5x")
+        
+        pcall(function()
+            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
+            Window.Frame.Size = newSize
+        end)
+        
         Window:Notify({
-            Title = "Mobile Size Set",
-            Description = "Restart script to apply mobile optimization",
-            Lifetime = 5
+            Title = "Mobile Size Applied",
+            Description = "UI scale: 0.5x",
+            Lifetime = 2
         })
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "Apply PC Size (1.0x)",
+    Name = "Tablet (0.75x) - Medium Size",
+    Callback = function()
+        UIScale = 0.75
+        UIScaleDisplay:UpdateName("Current UI Scale: 0.75x")
+        
+        pcall(function()
+            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
+            Window.Frame.Size = newSize
+        end)
+        
+        Window:Notify({
+            Title = "Tablet Size Applied",
+            Description = "UI scale: 0.75x",
+            Lifetime = 2
+        })
+    end,
+})
+
+settingSections.UISettings:Button({
+    Name = "PC (1.0x) - Recommended for PC",
     Callback = function()
         UIScale = 1.0
-        deviceType = "PC"
+        UIScaleDisplay:UpdateName("Current UI Scale: 1.0x")
+        
+        pcall(function()
+            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
+            Window.Frame.Size = newSize
+        end)
+        
         Window:Notify({
-            Title = "PC Size Set",
-            Description = "Restart script to apply PC optimization",
-            Lifetime = 5
+            Title = "PC Size Applied",
+            Description = "UI scale: 1.0x",
+            Lifetime = 2
         })
     end,
 })
 
 settingSections.UISettings:Button({
-    Name = "Show Platform Selection Again",
+    Name = "Large (1.25x) - Big Screen",
     Callback = function()
+        UIScale = 1.25
+        UIScaleDisplay:UpdateName("Current UI Scale: 1.25x")
+        
+        pcall(function()
+            local newSize = UDim2.fromOffset(868 * UIScale, 650 * UIScale)
+            Window.Frame.Size = newSize
+        end)
+        
         Window:Notify({
-            Title = "Platform Selection",
-            Description = "Restart the script to see platform selection popup again",
-            Lifetime = 5
+            Title = "Large Size Applied",
+            Description = "UI scale: 1.25x",
+            Lifetime = 2
         })
     end,
 })
 
 -- Device Info Section
 settingSections.DeviceInfo:Header({
-    Name = "Device Information"
+    Name = "Size Information"
 })
 
-settingSections.DeviceInfo:Label({
-    Text = "Current Platform: " .. deviceType
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "Current UI Scale: " .. UIScale
-})
-
-settingSections.DeviceInfo:Label({
+local WindowSizeDisplay = settingSections.DeviceInfo:Label({
     Text = "Window Size: " .. (868 * UIScale) .. "x" .. (650 * UIScale)
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "Original Size: 868x650"
 })
 
 settingSections.DeviceInfo:Divider()
@@ -1231,16 +1247,37 @@ settingSections.DeviceInfo:Label({
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Mobile/Tablet: 0.5x"
+    Text = "• Mobile: 0.5x (434x325)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• PC/Desktop: 1.0x"
+    Text = "• Tablet: 0.75x (651x488)"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Custom Range: 0.3x - 1.5x"
+    Text = "• PC: 1.0x (868x650)"
 })
+
+settingSections.DeviceInfo:Label({
+    Text = "• Large: 1.25x (1085x813)"
+})
+
+settingSections.DeviceInfo:Divider()
+
+settingSections.DeviceInfo:Label({
+    Text = "Range: 0.3x - 2.0x"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "Changes apply instantly!"
+})
+
+-- Update window size display
+spawn(function()
+    while wait(1) do
+        WindowSizeDisplay:UpdateName("Window Size: " .. math.floor(868 * UIScale) .. "x" .. math.floor(650 * UIScale))
+    end
+end)
 
 MacLib:SetFolder("Maclib")
 tabs.Settings:InsertConfigSection("Left")
@@ -1261,10 +1298,3 @@ end)
 
 tabs.Main:Select()
 MacLib:LoadAutoLoadConfig()
-
--- Initial notification about platform selection
-Window:Notify({
-    Title = "Platform Selected: " .. deviceType,
-    Description = "UI Scale: " .. UIScale .. "x - Perfect for your device!",
-    Lifetime = 5
-})
