@@ -1,5 +1,5 @@
--- Clean Dialog Selection Script - CrazyHub
--- Date: 2025-06-15 11:09:36
+-- Instant Dialog Script - CrazyHub
+-- Date: 2025-06-15 11:13:27
 -- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
@@ -50,7 +50,7 @@ local Window = MacLib:Window({
 	Title = "Ultimate Tower Defense Helper",
 	Subtitle = "CrazyHub (" .. deviceType .. " - Scale: " .. UIScale .. "x)",
 	Size = UDim2.fromOffset(868, 650),
-	DragStyle = 1,
+	DragStyle = 2,
 	DisabledWindowControls = {},
 	ShowUserInfo = false,
 	Keybind = Enum.KeyCode.RightControl,
@@ -60,7 +60,7 @@ local Window = MacLib:Window({
 -- Set the saved scale immediately
 Window:SetScale(UIScale)
 
--- Show platform selection dialog on first load or if user wants to change
+-- Show platform selection dialog - ALWAYS show on startup
 local function showPlatformDialog()
     Window:Dialog({
         Title = "Platform Selection - CrazyHub",
@@ -104,13 +104,11 @@ local function showPlatformDialog()
     })
 end
 
--- Show dialog if no config exists (first time user)
-if not isfile(configPath) then
-    task.wait(1) -- Wait for window to fully load
+-- Show dialog immediately when script executes
+spawn(function()
+    wait(0.5) -- Small delay to ensure window is fully loaded
     showPlatformDialog()
-else
-    platformSelected = true
-end
+end)
 
 local globalSettings = {
 	UIBlurToggle = Window:GlobalSetting({
@@ -379,7 +377,7 @@ end
 
 -- Function to check if we can auto join right now
 local function canAutoJoinNow()
-    local inLobby = checkIfInLobby()
+    local inLobby = checkIfInobby()
     local availableTeleporters = findAvailableTeleporters()
     local canJoin = inLobby and #availableTeleporters > 0
     
@@ -675,6 +673,14 @@ local macroSections = {
 
 macroSections.MacroInfo:Header({
 	Name = "Form Tracking Macro System [CrazyHub]:"
+})
+
+macroSections.MacroInfo:Label({
+	Text = "Date: 2025-06-15 11:13:27"
+})
+
+macroSections.MacroInfo:Label({
+	Text = "User: Crazy0z"
 })
 
 macroSections.MacroInfo:Label({
@@ -1146,7 +1152,7 @@ macroSections.MacroControls:Toggle({
 })
 
 -- =====================================
--- SETTINGS TAB - CLEAN DIALOG CONTROLS
+-- SETTINGS TAB - INSTANT DIALOG CONTROLS
 -- =====================================
 local settingSections = {
     UISettings = tabs.Settings:Section({ Side = "Left" }),
@@ -1276,7 +1282,11 @@ settingSections.DeviceInfo:Header({
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Dialog Selection:"
+    Text = "Instant Dialog:"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Shows immediately on execution"
 })
 
 settingSections.DeviceInfo:Label({
@@ -1320,7 +1330,7 @@ settingSections.DeviceInfo:Label({
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Dialog shows on first run"
+    Text = "• Dialog appears every execution"
 })
 
 MacLib:SetFolder("Maclib")
@@ -1346,6 +1356,6 @@ MacLib:LoadAutoLoadConfig()
 -- Show welcome notification
 Window:Notify({
     Title = "CrazyHub Loaded",
-    Description = "Platform: " .. deviceType .. " (Scale: " .. UIScale .. "x)",
-    Lifetime = 5
+    Description = "Platform dialog will appear shortly...",
+    Lifetime = 3
 })
