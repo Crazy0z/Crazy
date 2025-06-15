@@ -1,0 +1,1095 @@
+-- Form Tracking Macro Script - CrazyHub
+-- Date: 2025-06-15 10:36:47
+-- User: Crazy0z
+
+local vu = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    wait(3)
+    vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+local MacLib = loadstring(game:HttpGet("https://github.com/biggaboy212/Maclib/releases/latest/download/maclib.txt"))()
+
+-- Create CrazyHub folder if it doesn't exist
+local macroFolderPath = "crazyhub/"
+if not isfolder(macroFolderPath) then
+    makefolder(macroFolderPath)
+end
+
+local Window = MacLib:Window({
+	Title = "Ultimate Tower Defense Helper",
+	Subtitle = "Form Tracking Macro - CrazyHub",
+	Size = UDim2.fromOffset(868, 650),
+	DragStyle = 1,
+	DisabledWindowControls = {},
+	ShowUserInfo = false,
+	Keybind = Enum.KeyCode.RightControl,
+	AcrylicBlur = true,
+})
+
+local globalSettings = {
+	UIBlurToggle = Window:GlobalSetting({
+		Name = "UI Blur",
+		Default = Window:GetAcrylicBlurState(),
+		Callback = function(bool)
+			Window:SetAcrylicBlurState(bool)
+		end,
+	}),
+	NotificationToggler = Window:GlobalSetting({
+		Name = "Notifications",
+		Default = Window:GetNotificationsState(),
+		Callback = function(bool)
+			Window:SetNotificationsState(bool)
+		end,
+	}),
+	ShowUserInfo = Window:GlobalSetting({
+		Name = "Show User Info",
+		Default = Window:GetUserInfoState(),
+		Callback = function(bool)
+			Window:SetUserInfoState(bool)
+		end,
+	})
+}
+
+local tabGroups = {
+	TabGroup1 = Window:TabGroup()
+}
+
+local tabs = {
+	Main = tabGroups.TabGroup1:Tab({ Name = "Main", Image = "rbxassetid://10734950309" }),
+	Macro = tabGroups.TabGroup1:Tab({ Name = "Macro", Image = "rbxassetid://18821914323" }),
+	Settings = tabGroups.TabGroup1:Tab({ Name = "Settings", Image = "rbxassetid://10734950309" })
+}
+
+-- Helper function to get current money
+local function getCurrentMoney()
+	local success, money = pcall(function()
+		return game:GetService("Players").LocalPlayer.leaderstats.Cash.Value
+	end)
+	return success and money or 0
+end
+
+-- Get player and services
+local player = game:GetService("Players").LocalPlayer
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Available Maps
+local AVAILABLE_MAPS = {
+    "KameIsland",
+    "PlanetNamek", 
+    "HiddenLeafVillage",
+    "Marineford",
+    "KamiiUniversity",
+    "Space",
+    "SkeletonHeelStone",
+    "CostaSmeralda",
+    "KamiLookout",
+    "ValleyOfTheEnd",
+    "RubyPalace",
+    "AntNest",
+    "TrostDistrict",
+    "KarakuraTown",
+    "MenosGarden",
+    "OrangeTown",
+    "ShibuyaTrainStation",
+    "EishuDetention",
+    "ChamberOfAgony",
+    "Floria",
+    "WisteriaForest",
+    "LasNoches"
+}
+
+-- Game state tracking
+local selectedMap = "KameIsland"
+local selectedGamemode = "Classic"
+local isInStory = false
+local macroHasRun = false
+
+-- Auto replay using your exact detection method
+getgenv().AutoReplay = false
+
+-- Function to get teleporter position from Model
+local function getTeleporterPosition(teleporter)
+    if teleporter.PrimaryPart then
+        return teleporter.PrimaryPart.Position
+    end
+    
+    local partNames = {"DisplayPart", "TeleportPart", "MainPart", "Base", "Platform"}
+    for _, partName in ipairs(partNames) do
+        local part = teleporter:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            return part.Position
+        end
+    end
+    
+    for _, child in pairs(teleporter:GetChildren()) do
+        if child:IsA("BasePart") then
+            return child.Position
+        end
+    end
+    
+    local parts = {}
+    for _, child in pairs(teleporter:GetDescendants()) do
+        if child:IsA("BasePart") then
+            table.insert(parts, child)
+        end
+    end
+    
+    if #parts > 0 then
+        local totalPos = Vector3.new(0, 0, 0)
+        for _, part in ipairs(parts) do
+            totalPos = totalPos + part.Position
+        end
+        return totalPos / #parts
+    end
+    
+    return Vector3.new(0, 0, 0)
+end
+
+-- Function to find available teleporters
+local function findAvailableTeleporters()
+    local availableTeleporters = {}
+    
+    local success, teleporters = pcall(function()
+        local classicPartyTeleporters = workspace.Lobby.ClassicPartyTeleporters
+        
+        for _, teleporter in pairs(classicPartyTeleporters:GetChildren()) do
+            if teleporter.Name:find("Teleporter") then
+                local displayPart = teleporter:FindFirstChild("DisplayPart")
+                if displayPart then
+                    local billboardGui = displayPart:FindFirstChild("BillboardGui")
+                    if billboardGui then
+                        local timeLabel = billboardGui:FindFirstChild("Time")
+                        if timeLabel and timeLabel.Text == "Waiting for Players" then
+                            local position = getTeleporterPosition(teleporter)
+                            
+                            table.insert(availableTeleporters, {
+                                name = teleporter.Name,
+                                teleporter = teleporter,
+                                position = position
+                            })
+                        end
+                    end
+                end
+            end
+        end
+        
+        return availableTeleporters
+    end)
+    
+    if success then
+        return availableTeleporters
+    else
+        return {}
+    end
+end
+
+-- Function to teleport to an available teleporter
+local function teleportToAvailableTeleporter()
+    local success = pcall(function()
+        local availableTeleporters = findAvailableTeleporters()
+        
+        if #availableTeleporters == 0 then
+            return false
+        end
+        
+        local chosenTeleporter = availableTeleporters[1]
+        
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local teleportPosition = chosenTeleporter.position + Vector3.new(0, 5, 0)
+            player.Character.HumanoidRootPart.CFrame = CFrame.new(teleportPosition)
+            return true
+        else
+            return false
+        end
+    end)
+    
+    return success
+end
+
+-- Working auto join function
+local function workingAutoJoin()
+    local success = pcall(function()
+        local teleportSuccess = teleportToAvailableTeleporter()
+        if not teleportSuccess then
+            return false
+        end
+        
+        wait(3)
+        
+        local quickstartRemote = ReplicatedStorage.Modules.GlobalInit.RemoteEvents:FindFirstChild("PlayerQuickstartTeleport")
+        if quickstartRemote then
+            quickstartRemote:FireServer(selectedMap)
+            wait(2)
+            
+            local gamemodeRemote = ReplicatedStorage.Modules.GlobalInit.RemoteEvents:FindFirstChild("PlayerSelectedGamemode")
+            if gamemodeRemote then
+                gamemodeRemote:FireServer(selectedGamemode)
+                wait(1)
+            end
+        end
+        
+        return true
+    end)
+    
+    return success
+end
+
+-- Auto vote start function
+local function autoVoteStart()
+    local success, err = pcall(function()
+        local remote = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerVoteToStartMatch")
+        remote:FireServer()
+    end)
+    
+    return success
+end
+
+-- Enhanced game speed function
+local function setGameSpeed(speed)
+    local success, err = pcall(function()
+        local speedString = tostring(speed)
+        local remote = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("ClientRequestGameSpeed")
+        remote:FireServer(speedString)
+    end)
+    
+    return success
+end
+
+-- Story detection functions
+local function checkIfInStory()
+    local success, inStory = pcall(function()
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats and leaderstats:FindFirstChild("Cash") then
+            return true
+        end
+        return false
+    end)
+    
+    return success and inStory or false
+end
+
+local function checkIfInLobby()
+    local success, inLobby = pcall(function()
+        local teleporters = workspace.Lobby.ClassicPartyTeleporters
+        if teleporters and not checkIfInStory() then
+            return true
+        end
+        return false
+    end)
+    
+    return success and inLobby or false
+end
+
+-- Check if round over GUI is visible (your exact method)
+local function checkRoundOver()
+    local success, roundOver = pcall(function()
+        return player.PlayerGui.MainGui.MainFrames.RoundOver.Visible
+    end)
+    
+    return success and roundOver or false
+end
+
+-- Function to check if we can auto join right now
+local function canAutoJoinNow()
+    local inLobby = checkIfInLobby()
+    local availableTeleporters = findAvailableTeleporters()
+    local canJoin = inLobby and #availableTeleporters > 0
+    
+    return canJoin
+end
+
+-- =====================================
+-- MAIN TAB FEATURES
+-- =====================================
+local mainSections = {
+    AutoFeatures = tabs.Main:Section({ Side = "Left" }),
+    StoryInfo = tabs.Main:Section({ Side = "Right" }),
+}
+
+mainSections.AutoFeatures:Header({
+    Name = "Auto Features"
+})
+
+-- Map Selection
+mainSections.AutoFeatures:Dropdown({
+    Name = "Select Map:",
+    Multi = false,
+    Required = true,
+    Options = AVAILABLE_MAPS,
+    Default = 1,
+    Callback = function(Value)
+        selectedMap = Value
+    end,
+})
+
+-- Gamemode Selection
+mainSections.AutoFeatures:Dropdown({
+    Name = "Select Gamemode:",
+    Multi = false,
+    Required = true,
+    Options = {"Classic", "Hard", "Infinite"},
+    Default = 1,
+    Callback = function(Value)
+        selectedGamemode = Value
+    end,
+})
+
+mainSections.AutoFeatures:Divider()
+
+-- Auto Vote Start
+local autoVoteEnabled = false
+mainSections.AutoFeatures:Toggle({
+    Name = "Auto Vote Start",
+    Default = false,
+    Callback = function(state)
+        autoVoteEnabled = state
+        if state then
+            spawn(function()
+                while autoVoteEnabled do
+                    if checkIfInStory() then
+                        autoVoteStart()
+                        wait(10)
+                    else
+                        wait(5)
+                    end
+                end
+            end)
+        end
+    end,
+})
+
+-- Auto Speed Control
+local autoSpeedEnabled = false
+local selectedAutoSpeed = 1.5
+
+mainSections.AutoFeatures:Toggle({
+    Name = "Auto Game Speed",
+    Default = false,
+    Callback = function(state)
+        autoSpeedEnabled = state
+        if state then
+            spawn(function()
+                while autoSpeedEnabled do
+                    if checkIfInStory() then
+                        setGameSpeed(selectedAutoSpeed)
+                        wait(15)
+                    else
+                        wait(5)
+                    end
+                end
+            end)
+        end
+    end,
+})
+
+mainSections.AutoFeatures:Dropdown({
+    Name = "Auto Speed Setting:",
+    Multi = false,
+    Required = true,
+    Options = {"1x (Normal)", "1.5x", "2x"},
+    Default = 2,
+    Callback = function(Value)
+        if Value == "1x (Normal)" then
+            selectedAutoSpeed = 1
+        elseif Value == "1.5x" then
+            selectedAutoSpeed = 1.5
+        elseif Value == "2x" then
+            selectedAutoSpeed = 2
+        end
+    end,
+})
+
+mainSections.AutoFeatures:Divider()
+
+-- Auto Join Story
+local autoJoinStory = false
+mainSections.AutoFeatures:Toggle({
+    Name = "Auto Join Story Mode",
+    Default = false,
+    Callback = function(state)
+        autoJoinStory = state
+        if state then
+            Window:Notify({
+                Title = "Auto Join Enabled",
+                Description = "Will automatically join when conditions are met",
+                Lifetime = 3
+            })
+            
+            spawn(function()
+                while autoJoinStory do
+                    if canAutoJoinNow() then
+                        local success = workingAutoJoin()
+                        
+                        if success then
+                            macroHasRun = false -- Reset macro flag for new game
+                            
+                            Window:Notify({
+                                Title = "Auto Join Success",
+                                Description = "Successfully joined automatically!",
+                                Lifetime = 3
+                            })
+                            
+                            wait(8)
+                            
+                            if autoVoteEnabled then
+                                wait(2)
+                                autoVoteStart()
+                            end
+                            
+                            if autoSpeedEnabled then
+                                wait(2)
+                                setGameSpeed(selectedAutoSpeed)
+                            end
+                            
+                            wait(30)
+                        else
+                            wait(5)
+                        end
+                    else
+                        wait(2)
+                    end
+                end
+            end)
+        end
+    end,
+})
+
+-- Auto Replay Story using your exact method
+mainSections.AutoFeatures:Toggle({
+    Name = "Auto Replay Story",
+    Default = false,
+    Callback = function(state)
+        getgenv().AutoReplay = state
+        
+        if state then
+            Window:Notify({
+                Title = "Auto Replay Enabled",
+                Description = "Will automatically replay when round ends",
+                Lifetime = 3
+            })
+            
+            spawn(function()
+                while task.wait(1) do 
+                    if getgenv().AutoReplay == true then 
+                        if game:GetService("Players").LocalPlayer.PlayerGui.MainGui.MainFrames.RoundOver.Visible == true then 
+                            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("GlobalInit"):WaitForChild("RemoteEvents"):WaitForChild("PlayerVoteReplay"):FireServer()
+                            
+                            macroHasRun = false -- Reset macro flag for new game
+                            
+                            Window:Notify({
+                                Title = "Round Over!",
+                                Description = "Automatically voted for replay",
+                                Lifetime = 3
+                            })
+                            
+                            wait(5)
+                        end 
+                    else
+                        break
+                    end
+                end
+            end)
+        end
+    end,
+})
+
+-- Story Info Section
+mainSections.StoryInfo:Header({
+    Name = "Story Information"
+})
+
+local MoneyDisplay = mainSections.StoryInfo:Label({
+	Text = "Current Money: " .. getCurrentMoney()
+})
+
+local SelectedMapDisplay = mainSections.StoryInfo:Label({
+    Text = "Selected Map: " .. selectedMap
+})
+
+local SelectedGamemodeDisplay = mainSections.StoryInfo:Label({
+    Text = "Selected Gamemode: " .. selectedGamemode
+})
+
+local LobbyStatus = mainSections.StoryInfo:Label({
+    Text = "In Lobby: " .. (checkIfInLobby() and "Yes" or "No")
+})
+
+local StoryStatus = mainSections.StoryInfo:Label({
+    Text = "In Story: " .. (checkIfInStory() and "Yes" or "No")
+})
+
+local RoundOverStatus = mainSections.StoryInfo:Label({
+    Text = "Round Over GUI: " .. (checkRoundOver() and "Visible" or "Hidden")
+})
+
+local AutoJoinStatus = mainSections.StoryInfo:Label({
+    Text = "Auto Join: " .. (autoJoinStory and "Active" or "Inactive")
+})
+
+local AutoReplayStatus = mainSections.StoryInfo:Label({
+    Text = "Auto Replay: " .. (getgenv().AutoReplay and "Active" or "Inactive")
+})
+
+local VoteStatus = mainSections.StoryInfo:Label({
+    Text = "Auto Vote: " .. (autoVoteEnabled and "Active" or "Inactive")
+})
+
+local SpeedStatus = mainSections.StoryInfo:Label({
+    Text = "Auto Speed: " .. (autoSpeedEnabled and selectedAutoSpeed .. "x" or "Inactive")
+})
+
+local TeleporterStatus = mainSections.StoryInfo:Label({
+    Text = "Available Teleporters: Scanning..."
+})
+
+local MacroRunStatus = mainSections.StoryInfo:Label({
+    Text = "Macro Has Run: " .. (macroHasRun and "Yes" or "No")
+})
+
+-- Update displays
+spawn(function()
+	while wait(2) do
+        isInStory = checkIfInStory()
+        local inLobby = checkIfInLobby()
+        local roundOver = checkRoundOver()
+        local availableTeleporters = findAvailableTeleporters()
+        
+		MoneyDisplay:UpdateName("Current Money: " .. getCurrentMoney())
+        SelectedMapDisplay:UpdateName("Selected Map: " .. selectedMap)
+        SelectedGamemodeDisplay:UpdateName("Selected Gamemode: " .. selectedGamemode)
+        LobbyStatus:UpdateName("In Lobby: " .. (inLobby and "Yes" or "No"))
+        StoryStatus:UpdateName("In Story: " .. (isInStory and "Yes" or "No"))
+        RoundOverStatus:UpdateName("Round Over GUI: " .. (roundOver and "Visible" or "Hidden"))
+        AutoJoinStatus:UpdateName("Auto Join: " .. (autoJoinStory and "Active" or "Inactive"))
+        AutoReplayStatus:UpdateName("Auto Replay: " .. (getgenv().AutoReplay and "Active" or "Inactive"))
+        VoteStatus:UpdateName("Auto Vote: " .. (autoVoteEnabled and "Active" or "Inactive"))
+        SpeedStatus:UpdateName("Auto Speed: " .. (autoSpeedEnabled and selectedAutoSpeed .. "x" or "Inactive"))
+        TeleporterStatus:UpdateName("Available Teleporters: " .. #availableTeleporters)
+        MacroRunStatus:UpdateName("Macro Has Run: " .. (macroHasRun and "Yes" or "No"))
+	end
+end)
+
+-- =====================================
+-- FORM TRACKING MACRO SYSTEM
+-- =====================================
+local placedTowersList = {}
+local placementOrderCounter = 0
+
+local macroSections = {
+	MacroInfo = tabs.Macro:Section({ Side = "Left" }),
+	MacroControls = tabs.Macro:Section({ Side = "Right" }),
+}
+
+macroSections.MacroInfo:Header({
+	Name = "Form Tracking Macro System [CrazyHub]:"
+})
+
+macroSections.MacroInfo:Label({
+	Text = "Date: 2025-06-15 10:36:47"
+})
+
+macroSections.MacroInfo:Label({
+	Text = "User: Crazy0z"
+})
+
+macroSections.MacroInfo:Label({
+	Text = "Macro Folder: crazyhub/"
+})
+
+local MacroMoneyDisplay = macroSections.MacroInfo:Label({
+	Text = "Current Money: " .. getCurrentMoney()
+})
+
+local ActionsRecorded = macroSections.MacroInfo:Label({
+	Text = "Actions Recorded: 0"
+})
+
+local MacroStatus = macroSections.MacroInfo:Label({
+	Text = "Status: Idle"
+})
+
+local TowerQueue = macroSections.MacroInfo:Label({
+	Text = "Placement Order: " .. placementOrderCounter
+})
+
+local MacroAutoStatus = macroSections.MacroInfo:Label({
+	Text = "Auto Macro: Off"
+})
+
+local FormTrackingStatus = macroSections.MacroInfo:Label({
+	Text = "Form Tracking: Active"
+})
+
+-- Update displays
+spawn(function()
+	while wait(1) do
+		MacroMoneyDisplay:UpdateName("Current Money: " .. getCurrentMoney())
+		TowerQueue:UpdateName("Placement Order: " .. placementOrderCounter)
+	end
+end)
+
+-- Helper function to refresh macro list
+local function refreshMacroList()
+	local currentMacros = {}
+	local success, files = pcall(function()
+		return listfiles(macroFolderPath)
+	end)
+	
+	if success then
+		for _, v in pairs(files) do
+			local matchedFile = string.match(v, "(.+%.txt)")
+			if matchedFile then
+				local displayName = string.gsub(matchedFile, macroFolderPath, "")
+				table.insert(currentMacros, {display = displayName, full = matchedFile})
+			end
+		end
+	end
+	
+	return currentMacros
+end
+
+-- Get existing macro files from crazyhub folder
+local currentMacros = refreshMacroList()
+
+-- Convert to display names only for dropdown
+local macroDisplayNames = {}
+for _, macro in pairs(currentMacros) do
+	table.insert(macroDisplayNames, macro.display)
+end
+
+local macrofile = macroSections.MacroControls:Dropdown({
+	Name = "Select Macro:",
+	Multi = false,
+	Required = true,
+	Options = macroDisplayNames,
+	Default = 1,
+	Callback = function(Value)
+		for _, macro in pairs(currentMacros) do
+			if macro.display == Value then
+				getgenv().SelectedMacro = macro.full
+				break
+			end
+		end
+	end,
+}, "SelectMacro")
+
+macroSections.MacroControls:Input({
+	Name = "Enter Macro Name:",
+	Placeholder = "MyMacro",
+	AcceptedCharacters = "All",
+	Callback = function(input)
+		getgenv().MacroName = macroFolderPath .. input .. ".txt"
+	end,
+	onChanged = function(input)
+		getgenv().MacroName = macroFolderPath .. input .. ".txt"
+	end,
+}, "MacroName")
+
+macroSections.MacroControls:Button({
+	Name = "Create Entered Macro Name",
+	Callback = function()
+		if not getgenv().MacroName then
+			Window:Notify({
+				Title = "Error",
+				Description = "Please enter a macro name first!",
+				Lifetime = 3
+			})
+			return
+		end
+		
+		local initialMacro = '{"steps":[],"currentStepIndex":0}'
+		
+		local success, err = pcall(function()
+			writefile(getgenv().MacroName, initialMacro)
+		end)
+		
+		if success then
+			getgenv().SelectedMacro = getgenv().MacroName
+			
+			macrofile:ClearOptions()
+			task.wait(.5)
+
+			currentMacros = refreshMacroList()
+			local macroDisplayNames = {}
+			for _, macro in pairs(currentMacros) do
+				table.insert(macroDisplayNames, macro.display)
+			end
+			macrofile:InsertOptions(macroDisplayNames)
+			
+			Window:Notify({
+				Title = "Success",
+				Description = "Macro created in crazyhub/",
+				Lifetime = 3
+			})
+		else
+			Window:Notify({
+				Title = "Error",
+				Description = "Failed to create macro: " .. tostring(err),
+				Lifetime = 5
+			})
+		end
+	end,
+})
+
+macroSections.MacroControls:Button({
+	Name = "Delete Selected Macro",
+	Callback = function()
+		if getgenv().SelectedMacro then
+			local success, err = pcall(function()
+				delfile(getgenv().SelectedMacro)
+			end)
+			
+			if success then
+				macrofile:ClearOptions()
+				task.wait(.5)
+
+				currentMacros = refreshMacroList()
+				local macroDisplayNames = {}
+				for _, macro in pairs(currentMacros) do
+					table.insert(macroDisplayNames, macro.display)
+				end
+				macrofile:InsertOptions(macroDisplayNames)
+				
+				Window:Notify({
+					Title = "Success",
+					Description = "Macro deleted from crazyhub/",
+					Lifetime = 3
+				})
+			else
+				Window:Notify({
+					Title = "Error",
+					Description = "Failed to delete macro: " .. tostring(err),
+					Lifetime = 5
+				})
+			end
+		else
+			Window:Notify({
+				Title = "Error",
+				Description = "No macro selected!",
+				Lifetime = 3
+			})
+		end
+	end,
+})
+
+macroSections.MacroControls:Divider()
+
+-- Recording variables
+local isRecording = false
+local macroSteps = {}
+local stepIndex = 0
+local originalHook = nil
+
+-- ALLOWED REMOTES INCLUDING FORM UPGRADES
+local ALLOWED_REMOTES = {
+	"PlayerSetTowerTargetMode",
+	"PlayerSellTower", 
+	"PlayerUpgradeTower",
+	"PlayerPlaceTower"
+}
+
+-- Function to check if remote should be recorded
+local function shouldRecordRemote(remoteName)
+	for _, allowedName in pairs(ALLOWED_REMOTES) do
+		if remoteName == allowedName then
+			return true
+		end
+	end
+	return false
+end
+
+-- Function to identify form type from arguments
+local function identifyFormUpgrade(args)
+    -- Check if this is a form upgrade
+    -- Form upgrades have 2 arguments: [towerID, formNumber]
+    if #args == 2 then
+        local towerID = args[1]
+        local formNumber = args[2]
+        
+        -- Form numbers are typically 1, 2, or 3
+        if typeof(formNumber) == "number" and formNumber >= 1 and formNumber <= 3 then
+            return true, formNumber
+        end
+    end
+    return false, nil
+end
+
+-- FORM TRACKING RECORDING SYSTEM
+macroSections.MacroControls:Toggle({
+	Name = "Record Macro (Form Tracking)",
+	Default = false,
+	Callback = function(state)
+		if state then 
+			if not getgenv().SelectedMacro then
+				Window:Notify({
+					Title = "Error",
+					Description = "Please select or create a macro file first!",
+					Lifetime = 3
+				})
+				return
+			end
+			
+			macroSteps = {}
+			stepIndex = 0
+			isRecording = true
+			placementOrderCounter = 0
+			placedTowersList = {}
+			
+			MacroStatus:UpdateName("Status: Recording with Form Tracking...")
+			
+			originalHook = hookmetamethod(game, "__namecall", function(self, ...)
+				local method = getnamecallmethod()
+				local args = {...}
+				
+				local result = originalHook(self, ...)
+				
+				if isRecording and (method == "FireServer" or method == "InvokeServer") then
+					if shouldRecordRemote(self.Name) then
+						spawn(function()
+							stepIndex = stepIndex + 1
+							
+							local actionData = {
+								remote = self.Name,
+								method = method,
+								arguments = {},
+								step = stepIndex,
+								timestamp = tick(),
+								originalTowerID = nil,
+								placementOrder = nil,
+								isFormUpgrade = false,
+								formNumber = nil
+							}
+							
+							-- Enhanced tracking for different action types
+							if self.Name == "PlayerPlaceTower" then
+								placementOrderCounter = placementOrderCounter + 1
+								actionData.placementOrder = placementOrderCounter
+								wait(1)
+								
+							elseif self.Name == "PlayerUpgradeTower" then
+								-- Check if this is a form upgrade
+								local isForm, formNum = identifyFormUpgrade(args)
+								actionData.originalTowerID = tostring(args[1])
+								
+								if isForm then
+									actionData.isFormUpgrade = true
+									actionData.formNumber = formNum
+									print("[CrazyHub] 🔄 Recorded Form Upgrade - Tower: " .. actionData.originalTowerID .. " to Form " .. formNum)
+								else
+									print("[CrazyHub] ⬆️ Recorded Regular Upgrade - Tower: " .. actionData.originalTowerID)
+								end
+								
+							elseif self.Name == "PlayerSellTower" or self.Name == "PlayerSetTowerTargetMode" then
+								actionData.originalTowerID = tostring(args[1])
+							end
+							
+							-- Store arguments with proper types
+							for i, arg in pairs(args) do
+								if typeof(arg) == "Vector3" then
+									table.insert(actionData.arguments, {
+										type = "Vector3",
+										x = arg.X,
+										y = arg.Y,
+										z = arg.Z
+									})
+                                elseif typeof(arg) == "number" then
+                                    table.insert(actionData.arguments, {
+                                        type = "number",
+                                        value = arg
+                                    })
+                                elseif typeof(arg) == "boolean" then
+                                    table.insert(actionData.arguments, {
+                                        type = "boolean",
+                                        value = arg
+                                    })
+                                elseif typeof(arg) == "string" then
+                                    table.insert(actionData.arguments, {
+                                        type = "string",
+                                        value = arg
+                                    })
+                                else
+                                    table.insert(actionData.arguments, {
+                                        type = "unknown",
+                                        value = tostring(arg)
+                                    })
+								end
+							end
+							
+							table.insert(macroSteps, actionData)
+							
+							pcall(function()
+								local macroContent = HttpService:JSONEncode({steps = macroSteps})
+								writefile(getgenv().SelectedMacro, macroContent)
+							end)
+						end)
+					end
+				end
+				
+				return result
+			end)
+			
+			spawn(function()
+				while isRecording do
+					ActionsRecorded:UpdateName("Actions Recorded: " .. #macroSteps)
+					wait(0.5)
+				end
+			end)
+			
+		else
+			isRecording = false
+			MacroStatus:UpdateName("Status: Idle")
+			
+			if originalHook then
+				hookmetamethod(game, "__namecall", originalHook)
+				originalHook = nil
+			end
+		end 
+	end,
+})
+
+-- Replay delay
+local replayDelay = 2
+macroSections.MacroControls:Input({
+	Name = "Delay Between Actions (seconds):",
+	Placeholder = "2",
+	AcceptedCharacters = "Numbers",
+	Callback = function(input)
+		local delay = tonumber(input)
+		if delay and delay > 0 then
+			replayDelay = delay
+		end
+	end,
+})
+
+-- Function to play macro once at start with form support
+local function playMacroOnceWithForms(macroFile)
+    if not macroFile or not isfile(macroFile) then
+        return false
+    end
+
+    local macroContent = readfile(macroFile)
+    local success, macroData = pcall(function()
+        return HttpService:JSONDecode(macroContent)
+    end)
+
+    if not success or not macroData.steps then
+        return false
+    end
+
+    local steps = macroData.steps or {}
+
+    if #steps == 0 then
+        return false
+    end
+    
+    for i, step in ipairs(steps) do
+        local remote
+        for _, descendant in pairs(ReplicatedStorage:GetDescendants()) do
+            if (descendant:IsA("RemoteEvent") or descendant:IsA("RemoteFunction")) and descendant.Name == step.remote then
+                remote = descendant
+                break
+            end
+        end
+
+        if remote then
+            local args = {}
+            for j, argData in ipairs(step.arguments) do
+                if argData.type == "Vector3" then
+                    args[j] = Vector3.new(argData.x, argData.y, argData.z)
+                elseif argData.type == "number" then
+                    args[j] = argData.value
+                elseif argData.type == "boolean" then
+                    args[j] = argData.value
+                elseif argData.type == "string" then
+                    args[j] = argData.value
+                else
+                    local num = tonumber(argData.value)
+                    args[j] = num or argData.value
+                end
+            end
+
+            -- Execute the action with exact recorded arguments (including form numbers)
+            local success, err = pcall(function()
+                if remote:IsA("RemoteEvent") then
+                    remote:FireServer(unpack(args))
+                else
+                    remote:InvokeServer(unpack(args))
+                end
+            end)
+            
+            if step.remote == "PlayerPlaceTower" then
+                task.wait(1.5)
+            end
+        end
+        
+        wait(replayDelay)
+    end
+    
+    return true
+end
+
+-- Auto macro at start
+local autoMacroEnabled = false
+macroSections.MacroControls:Toggle({
+	Name = "Auto Play Macro at Start (Forms)",
+	Default = false,
+	Callback = function(state)
+		autoMacroEnabled = state
+		MacroAutoStatus:UpdateName("Auto Macro: " .. (state and "On (Forms)" or "Off"))
+		
+		if state then
+			spawn(function()
+				while autoMacroEnabled do
+					if checkIfInStory() and not macroHasRun then
+						wait(10)
+						
+						if checkIfInStory() and not macroHasRun then
+							local replayName = getgenv().SelectedMacro
+							if replayName and isfile(replayName) then
+								MacroStatus:UpdateName("Status: Auto Playing (Forms)...")
+								
+								local success = playMacroOnceWithForms(replayName)
+								macroHasRun = true
+								
+								if success then
+									Window:Notify({
+										Title = "Auto Macro Complete",
+										Description = "Form tracking macro played automatically!",
+										Lifetime = 3
+									})
+								end
+								
+								MacroStatus:UpdateName("Status: Idle")
+							end
+						end
+					end
+					wait(5)
+				end
+			end)
+		end
+	end,
+})
+
+MacLib:SetFolder("Maclib")
+tabs.Settings:InsertConfigSection("Left")
+
+Window.onUnloaded(function()
+	isRecording = false
+	getgenv().AutoReplay = false
+	autoJoinStory = false
+	autoVoteEnabled = false
+	autoSpeedEnabled = false
+	autoMacroEnabled = false
+	
+	if originalHook then
+		hookmetamethod(game, "__namecall", originalHook)
+		originalHook = nil
+	end
+end)
+
+tabs.Main:Select()
+MacLib:LoadAutoLoadConfig()
