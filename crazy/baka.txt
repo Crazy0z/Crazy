@@ -1,5 +1,5 @@
--- Instant Dialog Script - CrazyHub
--- Date: 2025-06-15 11:13:27
+-- Button Toggle UI Script - CrazyHub
+-- Date: 2025-06-15 11:23:12
 -- User: Crazy0z
 
 local vu = game:GetService("VirtualUser")
@@ -22,6 +22,10 @@ local configPath = "crazyhub/ui_config.txt"
 local UIScale = 1.5 -- Default to PC size
 local deviceType = "PC" -- Default device type
 local platformSelected = false
+
+-- UI Toggle Variables
+local isUIOpen = true
+local toggleButton = nil
 
 -- Load saved UI scale
 if isfile(configPath) then
@@ -50,7 +54,7 @@ local Window = MacLib:Window({
 	Title = "Ultimate Tower Defense Helper",
 	Subtitle = "CrazyHub (" .. deviceType .. " - Scale: " .. UIScale .. "x)",
 	Size = UDim2.fromOffset(868, 650),
-	DragStyle = 2,
+	DragStyle = 1,
 	DisabledWindowControls = {},
 	ShowUserInfo = false,
 	Keybind = Enum.KeyCode.RightControl,
@@ -60,11 +64,91 @@ local Window = MacLib:Window({
 -- Set the saved scale immediately
 Window:SetScale(UIScale)
 
+-- Create Toggle Button
+local function createToggleButton()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "CrazyHubToggle"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = game.CoreGui
+
+    local button = Instance.new("TextButton")
+    button.Name = "ToggleButton"
+    button.Size = UDim2.new(0, 100, 0, 50)
+    button.Position = UDim2.new(0, 10, 0, 10)
+    button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    button.BorderSizePixel = 2
+    button.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = "Hide UI"
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextScaled = true
+    button.Font = Enum.Font.GothamBold
+    button.Parent = screenGui
+
+    -- Make button draggable
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = button.Position
+        end
+    end)
+
+    button.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    button.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    return button, screenGui
+end
+
+-- UI Toggle Functions
+local function toggleUI()
+    if isUIOpen then
+        -- Close UI
+        Window.Frame.Visible = false
+        isUIOpen = false
+        toggleButton.Text = "Show UI"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "CrazyHub",
+            Text = "UI Hidden - Click button to show",
+            Duration = 3
+        })
+    else
+        -- Open UI
+        Window.Frame.Visible = true
+        isUIOpen = true
+        toggleButton.Text = "Hide UI"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        Window:Notify({
+            Title = "CrazyHub",
+            Description = "UI Visible - Click button to hide",
+            Lifetime = 3
+        })
+    end
+end
+
+-- Create toggle button
+toggleButton, toggleScreenGui = createToggleButton()
+toggleButton.MouseButton1Click:Connect(toggleUI)
+
 -- Show platform selection dialog - ALWAYS show on startup
 local function showPlatformDialog()
     Window:Dialog({
         Title = "Platform Selection - CrazyHub",
-        Description = "Choose your device type for optimal UI sizing. This will set the appropriate scale for your device.",
+        Description = "Choose your device type for optimal UI sizing. Use the toggle button in top-left to show/hide UI.",
         Buttons = {
             {
                 Name = "PC/Desktop (1.5x Scale)",
@@ -78,8 +162,8 @@ local function showPlatformDialog()
                     
                     Window:Notify({
                         Title = "PC Mode Selected",
-                        Description = "UI scale set to 1.5x for PC/Desktop",
-                        Lifetime = 3
+                        Description = "UI scale set to 1.5x - Use toggle button to show/hide UI",
+                        Lifetime = 5
                     })
                 end,
             },
@@ -95,8 +179,8 @@ local function showPlatformDialog()
                     
                     Window:Notify({
                         Title = "Mobile Mode Selected", 
-                        Description = "UI scale set to 0.5x for Mobile/Tablet",
-                        Lifetime = 3
+                        Description = "UI scale set to 0.5x - Use toggle button to show/hide UI",
+                        Lifetime = 5
                     })
                 end,
             }
@@ -377,7 +461,7 @@ end
 
 -- Function to check if we can auto join right now
 local function canAutoJoinNow()
-    local inLobby = checkIfInobby()
+    local inLobby = checkIfInLobby()
     local availableTeleporters = findAvailableTeleporters()
     local canJoin = inLobby and #availableTeleporters > 0
     
@@ -636,6 +720,10 @@ local PlatformStatus = mainSections.StoryInfo:Label({
     Text = "Platform: " .. deviceType .. " (Scale: " .. UIScale .. "x)"
 })
 
+local UIToggleStatus = mainSections.StoryInfo:Label({
+    Text = "UI Toggle: Button in Top-Left (" .. (isUIOpen and "Visible" or "Hidden") .. ")"
+})
+
 -- Update displays
 spawn(function()
 	while wait(2) do
@@ -657,6 +745,7 @@ spawn(function()
         TeleporterStatus:UpdateName("Available Teleporters: " .. #availableTeleporters)
         MacroRunStatus:UpdateName("Macro Has Run: " .. (macroHasRun and "Yes" or "No"))
         PlatformStatus:UpdateName("Platform: " .. deviceType .. " (Scale: " .. UIScale .. "x)")
+        UIToggleStatus:UpdateName("UI Toggle: Button in Top-Left (" .. (isUIOpen and "Visible" or "Hidden") .. ")")
 	end
 end)
 
@@ -672,19 +761,19 @@ local macroSections = {
 }
 
 macroSections.MacroInfo:Header({
-	Name = "Form Tracking Macro System [CrazyHub]:"
+    Name = "Form Tracking Macro System [CrazyHub]:"
 })
 
 macroSections.MacroInfo:Label({
-	Text = "Date: 2025-06-15 11:13:27"
+    Text = "Date: 2025-06-15 11:23:12"
 })
 
 macroSections.MacroInfo:Label({
-	Text = "User: Crazy0z"
+    Text = "User: Crazy0z"
 })
 
 macroSections.MacroInfo:Label({
-	Text = "Macro Folder: crazyhub/"
+    Text = "Macro Folder: crazyhub/"
 })
 
 local MacroMoneyDisplay = macroSections.MacroInfo:Label({
@@ -1152,7 +1241,7 @@ macroSections.MacroControls:Toggle({
 })
 
 -- =====================================
--- SETTINGS TAB - INSTANT DIALOG CONTROLS
+-- SETTINGS TAB - BUTTON TOGGLE CONTROLS
 -- =====================================
 local settingSections = {
     UISettings = tabs.Settings:Section({ Side = "Left" }),
@@ -1160,12 +1249,51 @@ local settingSections = {
 }
 
 settingSections.UISettings:Header({
-    Name = "Platform & UI Size Settings"
+    Name = "Platform & UI Controls"
 })
 
 -- Current platform display
 local currentPlatformDisplay = settingSections.UISettings:Label({
     Text = "Current Platform: " .. deviceType .. " (" .. UIScale .. "x)"
+})
+
+local toggleButtonDisplay = settingSections.UISettings:Label({
+    Text = "UI Toggle: Button in Top-Left Corner"
+})
+
+local uiStatusDisplay = settingSections.UISettings:Label({
+    Text = "UI Status: " .. (isUIOpen and "Visible" or "Hidden")
+})
+
+settingSections.UISettings:Divider()
+
+-- UI Toggle Controls
+settingSections.UISettings:Button({
+    Name = "Toggle UI Visibility",
+    Callback = function()
+        toggleUI()
+        uiStatusDisplay:UpdateName("UI Status: " .. (isUIOpen and "Visible" or "Hidden"))
+    end,
+})
+
+settingSections.UISettings:Button({
+    Name = "Show UI",
+    Callback = function()
+        if not isUIOpen then
+            toggleUI()
+            uiStatusDisplay:UpdateName("UI Status: Visible")
+        end
+    end,
+})
+
+settingSections.UISettings:Button({
+    Name = "Hide UI",
+    Callback = function()
+        if isUIOpen then
+            toggleUI()
+            uiStatusDisplay:UpdateName("UI Status: Hidden")
+        end
+    end,
 })
 
 settingSections.UISettings:Divider()
@@ -1241,7 +1369,7 @@ settingSections.UISettings:Input({
     end,
 })
 
--- Quick preset buttons (ONLY these two remain)
+-- Quick preset buttons
 settingSections.UISettings:Button({
     Name = "Quick Mobile (0.5x)",
     Callback = function()
@@ -1278,11 +1406,47 @@ settingSections.UISettings:Button({
 
 -- Device Info Section
 settingSections.DeviceInfo:Header({
-    Name = "Platform Information"
+    Name = "UI Toggle Information"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "Instant Dialog:"
+    Text = "Toggle Button Features:"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Located in top-left corner"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Draggable - click and move"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Changes color when UI hidden"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• Always visible on screen"
+})
+
+settingSections.DeviceInfo:Divider()
+
+settingSections.DeviceInfo:Label({
+    Text = "Button States:"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• 'Hide UI' = Dark gray (UI visible)"
+})
+
+settingSections.DeviceInfo:Label({
+    Text = "• 'Show UI' = Green (UI hidden)"
+})
+
+settingSections.DeviceInfo:Divider()
+
+settingSections.DeviceInfo:Label({
+    Text = "Platform Selection:"
 })
 
 settingSections.DeviceInfo:Label({
@@ -1300,24 +1464,6 @@ settingSections.DeviceInfo:Label({
 settingSections.DeviceInfo:Divider()
 
 settingSections.DeviceInfo:Label({
-    Text = "Manual Controls:"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Slider: 0.3x - 2.0x range"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Input: Type exact values"
-})
-
-settingSections.DeviceInfo:Label({
-    Text = "• Quick buttons: Mobile/PC presets"
-})
-
-settingSections.DeviceInfo:Divider()
-
-settingSections.DeviceInfo:Label({
     Text = "Settings:"
 })
 
@@ -1326,12 +1472,19 @@ settingSections.DeviceInfo:Label({
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Loaded on script start"
+    Text = "• Button works when UI hidden"
 })
 
 settingSections.DeviceInfo:Label({
-    Text = "• Dialog appears every execution"
+    Text = "• Manual controls available"
 })
+
+-- Update UI status display
+spawn(function()
+    while wait(1) do
+        uiStatusDisplay:UpdateName("UI Status: " .. (isUIOpen and "Visible" or "Hidden"))
+    end
+end)
 
 MacLib:SetFolder("Maclib")
 tabs.Settings:InsertConfigSection("Left")
@@ -1343,6 +1496,11 @@ Window.onUnloaded(function()
 	autoVoteEnabled = false
 	autoSpeedEnabled = false
 	autoMacroEnabled = false
+	
+	-- Clean up toggle button
+	if toggleScreenGui then
+		toggleScreenGui:Destroy()
+	end
 	
 	if originalHook then
 		hookmetamethod(game, "__namecall", originalHook)
@@ -1356,6 +1514,6 @@ MacLib:LoadAutoLoadConfig()
 -- Show welcome notification
 Window:Notify({
     Title = "CrazyHub Loaded",
-    Description = "Platform dialog will appear shortly...",
-    Lifetime = 3
+    Description = "Click the toggle button in top-left to show/hide UI - Platform dialog will appear shortly...",
+    Lifetime = 5
 })
