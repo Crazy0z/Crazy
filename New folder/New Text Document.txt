@@ -65,8 +65,6 @@ local Window = MacLib:Window({
 -- Set the saved scale immediately
 Window:SetScale(UIScale)
 
--- ...existing code... (createToggleButton, toggleUI, showPlatformDialog functions)
-
 -- Create Toggle Button
 local function createToggleButton()
     local screenGui = Instance.new("ScreenGui")
@@ -257,8 +255,6 @@ local tabs = {
 	Settings = tabGroups.TabGroup1:Tab({ Name = "Settings", Image = "rbxassetid://10734950309" })
 }
 
--- ...existing code... (helper functions and game state tracking)
-
 -- Helper function to get current money
 local function getCurrentMoney()
 	local success, money = pcall(function()
@@ -351,8 +347,6 @@ local function getTeleporterPosition(teleporter)
     
     return Vector3.new(0, 0, 0)
 end
-
--- ...existing code... (all other helper functions)
 
 -- Function to find available teleporters
 local function findAvailableTeleporters()
@@ -510,7 +504,13 @@ end
 -- SJW Form Selection Functions
 local function checkFormSelectionVisible()
     local success, visible = pcall(function()
-        return player.PlayerGui.MainGui.ChallengeCardSelection.Visible
+        local gui = player.PlayerGui:FindFirstChild("MainGui")
+        if not gui then return false end
+        
+        local challengeSelection = gui:FindFirstChild("ChallengeCardSelection")
+        if not challengeSelection then return false end
+        
+        return challengeSelection.Visible
     end)
     
     return success and visible or false
@@ -518,36 +518,27 @@ end
 
 local function clickSelectedForm()
     local success = pcall(function()
-        local formFrame = player.PlayerGui.MainGui.ChallengeCardSelection.Frame[tostring(selectedFormNumber)]
-        if formFrame then
-            -- Try to find a clickable button within the frame
-            local button = formFrame:FindFirstChildOfClass("TextButton") or formFrame:FindFirstChildOfClass("ImageButton")
-            if button then
-                -- Use multiple methods to ensure click registers
-                spawn(function()
-                    button.Activated:Fire()
-                end)
-                spawn(function()
-                    for _, connection in pairs(getconnections(button.MouseButton1Click)) do
-                        connection:Fire()
-                    end
-                end)
-                spawn(function()
-                    for _, connection in pairs(getconnections(button.Activated)) do
-                        connection:Fire()
-                    end
-                end)
-                return true
-            else
-                -- If no button found, try clicking the frame itself
-                spawn(function()
-                    for _, connection in pairs(getconnections(formFrame.InputBegan)) do
-                        connection:Fire({UserInputType = Enum.UserInputType.MouseButton1})
-                    end
-                end)
+        -- Use replicatesignal to click the form button
+        local formPath = player.PlayerGui.MainGui.ChallengeCardSelection.Frame[tostring(selectedFormNumber)]
+        
+        -- Try to find the button in the form frame
+        local button = formPath:FindFirstChildOfClass("TextButton") or 
+                      formPath:FindFirstChildOfClass("ImageButton") or
+                      formPath:FindFirstChild("Button") or
+                      formPath:FindFirstChild("Select") or
+                      formPath:FindFirstChild("Choose")
+        
+        if button and button.MouseButton1Click then
+            replicatesignal(button.MouseButton1Click)
+            return true
+        else
+            -- If no specific button found, try the frame itself
+            if formPath.MouseButton1Click then
+                replicatesignal(formPath.MouseButton1Click)
                 return true
             end
         end
+        
         return false
     end)
     
@@ -617,8 +608,6 @@ mainSections.AutoFeatures:Dropdown({
     end,
 })
 
--- ...existing code... (Auto Form Selection Toggle)
-
 -- Auto Form Selection Toggle
 mainSections.AutoFeatures:Toggle({
     Name = "Auto Select SJW Form",
@@ -630,19 +619,40 @@ mainSections.AutoFeatures:Toggle({
                 while autoFormEnabled do
                     if checkIfInStory() and not formHasBeenSelected then
                         if checkFormSelectionVisible() then
-                            wait(1) -- Small delay to ensure GUI is fully loaded
+                            wait(1.5) -- Increased delay to ensure GUI is fully loaded
                             local success = clickSelectedForm()
                             if success then
                                 formHasBeenSelected = true
                                 Window:Notify({
                                     Title = "Form Selected",
-                                    Description = "Selected " .. selectedForm .. " automatically!",
+                                    Description = "Selected " .. selectedForm .. " using replicatesignal!",
                                     Lifetime = 3
                                 })
+                            else
+                                -- Fallback method if replicatesignal fails
+                                local fallbackSuccess = pcall(function()
+                                    local formFrame = player.PlayerGui.MainGui.ChallengeCardSelection.Frame[tostring(selectedFormNumber)]
+                                    -- Try multiple click methods as fallback
+                                    for _, child in pairs(formFrame:GetChildren()) do
+                                        if child:IsA("GuiButton") then
+                                            child.Activated:Fire()
+                                            break
+                                        end
+                                    end
+                                end)
+                                
+                                if fallbackSuccess then
+                                    formHasBeenSelected = true
+                                    Window:Notify({
+                                        Title = "Form Selected (Fallback)",
+                                        Description = "Selected " .. selectedForm .. " using fallback method!",
+                                        Lifetime = 3
+                                    })
+                                end
                             end
                         end
                     end
-                    wait(1)
+                    wait(2) -- Increased check interval
                 end
             end)
         end
@@ -716,10 +726,6 @@ mainSections.AutoFeatures:Dropdown({
         end
     end,
 })
-
--- ...existing code... (Auto Join Story, Auto Replay Story, Story Info Section with all labels and updates)
-
-mainSections.AutoFeatures:Divider()
 
 -- Auto Join Story
 local autoJoinStory = false
@@ -1036,8 +1042,6 @@ local macrofile = macroSections.MacroControls:Dropdown({
 		end
 	end,
 }, "SelectMacro")
-
--- ...existing code... (macro controls, recording system)
 
 macroSections.MacroControls:Input({
 	Name = "Enter Macro Name:",
